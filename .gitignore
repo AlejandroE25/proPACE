@@ -1,0 +1,10 @@
+__pycache__/Carter.cpython-39.pyc
+__pycache__/processor.cpython-310.pyc
+__pycache__/Weather.cpython-39.pyc
+.idea/.gitignore
+.idea/misc.xml
+.idea/modules.xml
+.idea/proPACE.iml
+.idea/vcs.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.DS_Store

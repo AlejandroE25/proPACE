@@ -3,13 +3,28 @@
     <head>
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="user-scalable=no, width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1, minimum-scale=1, target-densitydpi=device-dpi">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <link rel="stylesheet" href="./assets/css/index.css">
         <title>PACE</title>
     </head>
     <body>
-        
-        
+        <button id="pace_logo" class="unselectable">
+            <h1 id="title">
+                <span id="pro">pro</span>
+                <span id="pace">PACE</span>
+                <span id="underscore">_</span>
+            </h1>
+        </button>
+
+        <div class="caption unselectable" id="transcript">
+            <h1> PACE: <span id="transcript-text"></span></h1>
+        </div>
+
+        <!-- input field to type text into -->
+        <div class="caption unselectable" id="input">
+            <h1> Send: <input type="text" id="inputline" placeholder="Type your message here"></h1>
 
         <script src="./assets/js/index.js"></script>
     </body>

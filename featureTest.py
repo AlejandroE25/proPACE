@@ -1,28 +1,25 @@
-from websocket_server import WebsocketServer
-import requests
 import pyfiglet
 import rich
 
-workingSubsystems = ["Carter", "Weather"]
-
-# Called for every client connecting (after handshake)
-def new_client(client, server):
-    response = Carter.generateResponse("Hi, I'm back")
-    server.send_message(client, response)
-    rich.print(f"[bold green]New client connected and was given id {client['id']}[/bold green]")
+workingSubsystems = ["Weather", "Carter"]
 
 
-# Called for every client disconnecting
-def client_left(client, server):
-    rich.print(f"[bold red]Client(%d) disconnected [/bold red]" % client['id'])
+def parseResponse(response):
+    agent_response_text = response['output']['text']
+    agent_response_intent = response['triggers'][0]['type']
+
+    if agent_response_intent == "Weather Request":
+        city, weather, temp, windchill = Weather.getWeather()
+        return agent_response_text.replace("$city$", city).replace("$weather$", weather).replace("$real_temp$",
+                                                                                                 str(int(
+                                                                                                     temp))).replace(
+            "$wind_chill$", str(int(windchill)))
 
 
-# Called when a client sends a message
-def message_received(client, server, message):
-    rich.print(f"[blue]Client({client['id']}) said: {message}[/blue]")
-    response = Carter.generateResponse(message)
-    server.send_message_to_all(response)
-    rich.print(f"[green]PACE said: {response}[/green]")
+def generateResponse(text):
+    response = Carter.getCarterResponse(text)
+    finalResponse = parseResponse(response)
+    return finalResponse
 
 
 if __name__ == "__main__":
@@ -39,7 +36,6 @@ if __name__ == "__main__":
         try:
             if subsystem == "Weather":
                 import Weather
-
                 Weather.check()
                 rich.print(f"[bold green]{subsystem} is working![/bold green]")
             elif subsystem == "Carter":
@@ -51,12 +47,7 @@ if __name__ == "__main__":
             workingSubsystems.remove(subsystem)
 
     print("Starting PACE...")
-    HOST = '0.0.0.0'
-    PORT = 9001
-    server = WebsocketServer(host=HOST, port=PORT)
-    server.set_fn_new_client(new_client)
-    server.set_fn_client_left(client_left)
-    server.set_fn_message_received(message_received)
     print(pyfiglet.figlet_format("PACE", font="slant"))
     rich.print(f"[purple]Working subsystems: {workingSubsystems}[/purple]\n\n")
-    server.run_forever()
+
+    print(generateResponse("What's the weather looking like?"))
