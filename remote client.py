@@ -8,6 +8,7 @@ received = False
 
 
 def on_message(ws, message):
+    message = message.split(";")[1]
     rich.print(f"[bold red]proPACE: {message}[/bold red]")
     global received
     received = True

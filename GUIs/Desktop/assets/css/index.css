@@ -105,3 +105,7 @@ body {
     height: 100%;
     color: white;
 }
+
+#user {
+    font-size: 1em;
+}

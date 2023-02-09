@@ -1,16 +1,22 @@
-let transcript = document.getElementById("transcript-text")
+let response = document.getElementById("response-text")
+let queryText = document.getElementById("query-text")
 
 window.onload = function() {
     //connect to the websocket server
     ws = new WebSocket("ws://73.110.35.182:9001");
     ws.onmessage = function (evt) {
         let received_msg = evt.data;
-        transcript.innerHTML = received_msg;
+        
+        // split the response into an array at the ';' character, where the first element is the query and the second is the response
+        let splitResponse = received_msg.split(";")
+        queryText.innerHTML = splitResponse[0]
+        response.innerHTML = splitResponse[1]
+
+        speakText(splitResponse[1])
     }
 }
 
 let button = document.getElementById("pace_logo")
-
 
 button.onpointerdown = function() {
     button.style.background = "#242F40"

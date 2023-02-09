@@ -27,8 +27,5 @@ def getWeather():
 
 # Check to see if we can reach the servers
 def check():
-    try:
-        os.system("ping api.openweathermap.org")
-        return True
-    except:
-        return False
+    os.system("ping api.openweathermap.org")
+    getWeather()
