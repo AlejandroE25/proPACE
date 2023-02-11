@@ -8,3 +8,5 @@ __pycache__/Weather.cpython-39.pyc
 .idea/vcs.xml
 .idea/inspectionProfiles/profiles_settings.xml
 .DS_Store
+__pycache__/gpt.cpython-39.pyc
+__pycache__/Responses.cpython-39.pyc

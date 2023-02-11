@@ -12,9 +12,14 @@ window.onload = function() {
         queryText.innerHTML = splitResponse[0]
         response.innerHTML = splitResponse[1]
 
-        speakText(splitResponse[1])
+        if (iSentTheMessage == true) {
+            speakText(splitResponse[1])
+            iSentTheMessage = false
+        }
     }
 }
+
+var iSentTheMessage = true
 
 function speakText(textToSpeak){
   var myAudio = new Audio("https://api.carterapi.com/v0/speak/vOxeSZM6JyPBInc7YGithemFFMI4yKtb/" + textToSpeak);
@@ -38,6 +43,7 @@ let inputline = document.getElementById("inputline")
 inputline.onkeydown = function(e) {
     if (e.keyCode === 13) {
         ws.send(inputline.value)
+        iSentTheMessage = true
         inputline.value = ""
         queryText.innerHTML = ""
         response.innerHTML = ""

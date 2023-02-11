@@ -1,5 +1,4 @@
 from websocket_server import WebsocketServer
-import requests
 import os
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
