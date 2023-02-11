@@ -6,7 +6,7 @@ import pygame
 import pyfiglet
 import rich
 
-workingSubsystems = ["Carter", "gpt", "Responses", "Weather"]
+workingSubsystems = ["Carter", "Responses", "Weather"]
 pygame.mixer.init()
 
 checkSound = pygame.mixer.Sound("./sounds/checking.wav")
@@ -17,7 +17,7 @@ startupCompleteSound = pygame.mixer.Sound("./sounds/startupComplete.wav")
 
 # Called for every client connecting (after handshake)
 def new_client(client, server):
-    response = gpt.generateResponse("Hi, I'm back")
+    response = Responses.generateResponse("Hi, I'm back")
     response = f"Hi, I'm back;{response}"
     server.send_message(client, response)
     rich.print(f"[bold green]New client connected and was given id {client['id']}[/bold green]")
@@ -52,10 +52,10 @@ if __name__ == "__main__":
 
                     Weather.check()
                     rich.print(f"[bold green]{subsystem} is working![/bold green]")
-                elif subsystem == "Carter":
-                    import Carter
+                elif subsystem == "Wolfram":
+                    import Wolfram
 
-                    Carter.check()
+                    Wolfram.check()
                     rich.print(f"[bold green]{subsystem} is working![/bold green]\n\n")
 
                 elif subsystem == "Responses":
@@ -88,4 +88,5 @@ if __name__ == "__main__":
     startupCompleteSound.play()
     print(pyfiglet.figlet_format("PACE", font="slant"))
     rich.print(f"[purple]Working subsystems: {workingSubsystems}[/purple]\n\n")
+    os.system("python3 -m webbrowser http://10.0.0.227/propace/guis/desktop")
     server.run_forever()

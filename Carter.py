@@ -22,6 +22,4 @@ def getCarterResponse(text):
 
 
 def check():
-    os.system("ping api.openweathermap.org")
-    Weather.check()
     getCarterResponse("hello")

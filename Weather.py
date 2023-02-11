@@ -1,4 +1,6 @@
 import requests
+import platform
+import subprocess
 import os
 
 def getLocation():
@@ -27,5 +29,10 @@ def getWeather():
 
 # Check to see if we can reach the servers
 def check():
-    os.system("ping api.openweathermap.org")
-    getWeather()
+    param = '-n' if platform.system().lower()=='windows' else '-c'
+
+    # Building the command. Ex: "ping -c 1 google.com"
+    command = ['ping', param, '1', "api.openweathermap.org"]
+
+    return subprocess.call(command) == 0
+    print(getWeather())

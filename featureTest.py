@@ -1,8 +1,22 @@
-import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame
+import Wolfram
+import gpt
 
 
-checkSound.play()
+def parseResponse(wolframResponse, gptResponse):
+    if wolframResponse == None:
+        print("Wolfram Response is None")
+        return gptResponse
+    else:
+        print("Wolfram Response is not None")
+        return wolframResponse
 
-pygame.time.wait(1000)
+
+def generateResponse(text):
+    wolframResponse = Wolfram.getWolframResponse(text)
+    gptResponse = gpt.generateResponse(text)
+    finalResponse = parseResponse(wolframResponse, gptResponse)
+    return finalResponse
+
+
+def check():
+    print(generateResponse("What is the capital of illinois?"))
