@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="12d1eb9b-392b-42f5-a1a4-5e5949ca34a2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../Responses.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../Responses.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Wolfram.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../Wolfram.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../featureTest.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../featureTest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../server.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../server.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="ProjectId" id="2Lc7yp15BWtJfQc0k4OmOJemnB8" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "C:/Users/ajesc/Downloads/Jarvis-main/Jarvis Github"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="12d1eb9b-392b-42f5-a1a4-5e5949ca34a2" name="Changes" comment="" />
+      <created>1676158773409</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1676158773409</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

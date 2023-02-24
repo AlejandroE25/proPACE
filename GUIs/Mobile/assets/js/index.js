@@ -7,8 +7,8 @@ window.onload = function() {
     ws.onmessage = function (evt) {
         let received_msg = evt.data;
         
-        // split the response into an array at the ';' character, where the first element is the query and the second is the response
-        let splitResponse = received_msg.split(";")
+        // split the response into an array at the '$$' character, where the first element is the query and the second is the response
+        let splitResponse = received_msg.split("$$")
         queryText.innerHTML = splitResponse[0]
         response.innerHTML = splitResponse[1]
 

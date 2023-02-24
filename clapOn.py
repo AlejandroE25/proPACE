@@ -106,6 +106,8 @@ class TapTester(object):
 def Tester():
     tt = TapTester()
 
+    print("Listening for clap...")
+
     while True:
         kk = tt.listen()
 

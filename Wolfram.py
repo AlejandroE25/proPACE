@@ -14,4 +14,4 @@ def getWolframResponse(query):
 
 
 def check():
-    print(getWolframResponse("what is the meaning of life?"))
+    getWolframResponse("what is the meaning of life?")

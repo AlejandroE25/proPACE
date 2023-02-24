@@ -7,9 +7,11 @@
 }
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@1,800&display=swap');
 
+
 * {
     margin: 0;
     padding: 0;
+    color: #FCBE24;
 }
 
 body {
@@ -31,8 +33,7 @@ body {
 }
 
 #title {
-    color: #FCBE24;
-    font-size: 4em;
+    font-size: 3em;
 
     width: 100%;
 
@@ -58,44 +59,44 @@ body {
     background: #161c29;
 
     border-radius: 50%;
-    width: 350px;
-    height: 350px;
+    width: 250px;
+    height: 250px;
     border: 2px solid #FCBE24;
 
     position: absolute;
-    top: 40%;
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
 
 .caption {
-    color: #FCBE24;
     font-size: .5em;
 }
 
 #transcript {
-    color: #FCBE24;
     font-size: 1em;
     position: absolute;
-    top: 75%;
-    left: 50%;
-    text-align: center;
-    transform: translate(-50%, -50%);
-    width: 100%;
+    top: 90%;
+    right: 5%;
+    text-align: left;
+    transform: translate(5%, -90%);
+    width: 500px;
+    height: 80px;
+    overflow: hidden;
+    
 }
 
 #input {
     border: 2px solid #FCBE24;
-    width: 30%;
+    width: 475px;
     border-radius: 5px;
-    color: #FCBE24;
     font-size: 0.5em;
     position: absolute;
     padding: 5px;
     top: 90%;
-    left: 50%;
+    right: 5%;
     text-align: center;
-    transform: translate(-50%, -50%);
+    transform: translate(5%, 0);
 }
 
 #inputline {
@@ -108,4 +109,61 @@ body {
 
 #user {
     font-size: 1em;
+}
+
+#pace-txt {
+    font-size: 1em;
+    height: 100%;
+    width: 100%;
+}
+
+.time {
+    position: absolute;
+    top: 5%;
+    right: 5%;
+    font-size: 1.2em;
+}
+
+.news {
+    position: absolute;
+    bottom: 5%;
+    left: 5%;
+    font-size: 1.2em;
+
+    width: 20%;
+    max-height: 30%;
+    overflow: auto;
+    border: 2px solid #FCBE24;
+    border-radius: 2%;
+}
+
+#newsItems {
+    font-size: 0.7em;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#news {
+    font-size: 1.5em;
+    padding: 5px;
+}
+
+.news-item {
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid #FCBE24;
+    border-radius: 2%;
+}
+
+.ip {
+    font-weight: 100;
+    position: absolute;
+    top: 5%;
+    left: 5%;
+    font-size: 1em;
+}
+
+.ip #ipaddress {
+    font-weight: 900;
 }

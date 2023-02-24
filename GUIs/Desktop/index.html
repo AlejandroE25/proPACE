@@ -10,6 +10,21 @@
         <title>PACE</title>
     </head>
     <body>
+
+        <div class="ip">
+            <span id="ip">IP: <span id="ipaddress">0.0.0.0</span></span>
+        </div>
+
+        <div class="time">
+            <span id="time">00:00 AM</span>
+        </div>
+
+        <div class="news">
+            <span id="news">News</span>
+            <ul id="newsItems">
+            </ul>
+        </div>
+
         <button id="pace_logo" class="unselectable">
             <h1 id="title">
                 <span id="pro">pro</span>
@@ -20,13 +35,15 @@
 
         <div class="caption unselectable" id="transcript">
             <h1 id="user">User: <span id="query-text"></span></h1>
-            <h1 id="pace">PACE: <span id="response-text"></span></h1>
+            <h1 id="pace-txt">PACE: <span id="response-text"></span></h1>
         </div>
 
         <!-- input field to type text into -->
         <div class="caption unselectable" id="input">
             <h1> Send: <input type="text" id="inputline" placeholder="Type your message here"></h1>
+        </div>
 
         <script src="./assets/js/index.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
     </body>
 </html>
