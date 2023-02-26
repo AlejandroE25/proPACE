@@ -12,6 +12,7 @@
     margin: 0;
     padding: 0;
     color: #FCBE24;
+    cursor: none
 }
 
 body {
@@ -60,24 +61,6 @@ body {
     top: 50%;
     left: 50%;
     animation: rotate 11s linear infinite;
-}
-
-
-#blob {
-    background: rgb(2,0,36);
-    background: linear-gradient(
-        to right,
-        rgba(13,17,25,1) 0%,
-        rgba(57,68,93,1) 100%
-    );
-    height: 150px;
-    aspect-ratio: 1;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    animation: rotate 22s infinite;
 }
 
 @keyframes rotate {
@@ -148,9 +131,10 @@ body {
     transform: translate(-50%, -50%);
 }
 
-.caption {
-    font-size: .5em;
-}
+
+
+
+
 
 #transcript {
     font-size: 1em;
@@ -160,41 +144,42 @@ body {
     text-align: left;
     transform: translate(5%, -90%);
     width: 500px;
-    height: 80px;
+    height: 250px;
     overflow: hidden;
-    
-}
-
-#input {
     border: 2px solid #FCBE24;
-    width: 475px;
-    border-radius: 5px;
+    border-radius: 2%;
+    font-weight: 200;
     font-size: 0.5em;
-    position: absolute;
-    padding: 5px;
-    top: 90%;
-    right: 5%;
-    text-align: center;
-    transform: translate(5%, 0);
 }
 
-#inputline {
-    width: 60%;
-    height: 110%;
-    background: none;
-    height: 100%;
-    color: white;
+#transcript hr {
+    margin: 5px
 }
 
 #user {
-    font-size: 1em;
+    text-align: right;
+    padding: 15px;
+    color: #757474;
+}
+
+#query-text {
+    
+    color: #b0b0b0;
 }
 
 #pace-txt {
-    font-size: 1em;
     height: 100%;
     width: 100%;
+    padding: 5px 15px 15px 15px;
 }
+
+.header {
+    font-size: 2.5em;
+    padding: 5px;
+}
+
+
+
 
 .time {
     position: absolute;
@@ -203,7 +188,7 @@ body {
     font-size: 1.2em;
 }
 
-.news {
+#news {
     position: absolute;
     bottom: 5%;
     left: 5%;
@@ -213,7 +198,7 @@ body {
     max-height: 30%;
     overflow: auto;
     border: 2px solid #FCBE24;
-    border-radius: 2%;
+    border-radius: 5px;
 }
 
 #newsItems {
@@ -223,16 +208,12 @@ body {
     overflow: hidden;
 }
 
-#news {
-    font-size: 1.5em;
-    padding: 5px;
-}
-
 .news-item {
     margin: 5px;
     padding: 5px;
     border: 1px solid #FCBE24;
-    border-radius: 2%;
+    border-radius: 5px;
+    color: #b0b0b0
 }
 
 .ip {
@@ -248,4 +229,5 @@ body {
 
 .ip #ipaddress {
     font-weight: 900;
+    color: #b0b0b0;
 }

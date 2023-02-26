@@ -20,20 +20,17 @@ window.onload = function() {
             newsItems.appendChild(li)
         }
     })
-}
+    const news = document.getElementById("news")
 
-
-
-const blob = document.getElementById("blob");
-
-document.body.onpointermove = event => {
-    const { clientX, clientY } = event;
-
-    blob.animate({
-        left: `${clientX}px`,
-        top: `${clientY}px`,
-    }, {duration: 500, fill: "forwards"})
-
+    // scroll trough the news element really slowly, then reset the scroll position with an ease animtion
+    setInterval(() => {
+        news.scrollBy(0, 1)
+        if (news.scrollTop == news.scrollHeight - news.clientHeight) {
+            news.animate({
+                scrollTop: 0
+            }, {duration: 10000, fill: "forwards"})
+        }
+    }, 100)
 }
 
 function currentTime() {
@@ -70,19 +67,13 @@ function connect() {
         let splitResponse = received_msg.split("$$")
         queryText.innerHTML = splitResponse[0]
         response.innerHTML = splitResponse[1]
-
-        if (iSentTheMessage == true) {
-            speakText(splitResponse[1])
-            iSentTheMessage = false
-        }
+        speakText(splitResponse[1])
     }
     ws.onclose = function() {
         console.log("Connection is closed...");
         setTimeout(connect, 1000);
     }
 }
-
-var iSentTheMessage = true
 
 function speakText(textToSpeak){
   var myAudio = new Audio("https://api.carterapi.com/v0/speak/vOxeSZM6JyPBInc7YGithemFFMI4yKtb/" + textToSpeak);

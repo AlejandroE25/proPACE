@@ -20,7 +20,7 @@ voices = engine.getProperty('voices')
 rate = engine.getProperty('rate')
 engine.setProperty('rate', 175)
 engine.setProperty('voice', voices[0].id)
-engine.setProperty('volume', 0.0)
+engine.setProperty('volume', -20.0)
 
 os.system("cls")
 
