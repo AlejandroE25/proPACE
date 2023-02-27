@@ -9,17 +9,6 @@ window.onload = function() {
     fetch("https://api.ipify.org/?format=json").then(res => res.json()).then(data => {
         document.getElementById("ipaddress").innerText = data.ip
     })
-
-    // get the titles from the local news.json file, then append them to the newsItems ul as .news-items
-    fetch("./news.json").then(res => res.json()).then(data => {
-        let newsItems = document.getElementById("newsItems")
-        for (let i = 0; i < data.length; i++) {
-            let li = document.createElement("li")
-            li.className = "news-item"
-            li.innerHTML = data[i].title
-            newsItems.appendChild(li)
-        }
-    })
 }
 
 

@@ -20,6 +20,60 @@ body {
     height: 100vh;
 }
 
+#blob1 {
+    width: 350px;
+    height: 250px;
+    background: rgb(2,0,36);
+    background: linear-gradient(
+        to right,
+        rgba(13,17,25,1) 0%,
+        rgba(57,68,93,1) 100%
+    );
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    animation: rotate 22s linear infinite;
+}
+
+#blob2 {
+    width: 250px;
+    height: 350px;
+    background: rgb(2,0,36);
+    background: linear-gradient(
+        to right,
+        rgba(57,68,93,1) 0%,
+        rgba(13,17,25,1) 100%
+    );
+    transform: rotate(90deg);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    animation: rotate 11s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    50 % {
+        scale: 1 1.5;
+    }
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255, 0.2) 1px, transparent 0);
+    background-size: 5vmin 5vmin;
+    backdrop-filter: blur(50px);
+    overflow-y: auto;
+}
+
 .unselectable {
     -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
@@ -55,7 +109,7 @@ body {
 }
 
 #pace_logo {
-    background: #161c29;
+    background: rgba(13,17,25,0.5);
 
     border-radius: 50%;
     width: 300px;
@@ -63,7 +117,7 @@ body {
     border: 2px solid #FCBE24;
 
     position: absolute;
-    top: 50%;
+    top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
@@ -77,7 +131,7 @@ body {
     color: #FCBE24;
     font-size: 0.5em;
     position: absolute;
-    top: 80%;
+    bottom: 10%;
     left: 50%;
     text-align: center;
     transform: translate(-50%, -50%);
