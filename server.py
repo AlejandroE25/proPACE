@@ -16,8 +16,9 @@ import pygame
 import pyfiglet
 import rich
 
-allSubsystems = ["Wolfram", "Carter", "Responses", "Weather", "News"]
-workingSubsystems = ["Wolfram", "Carter", "Responses", "Weather", "News"]
+# allSubsystems = ["Wolfram", "Carter", "Responses", "Weather", "News"]
+allSubsystems = ["Carter", "Responses", "News"]
+workingSubsystems = allSubsystems.copy()
 pygame.mixer.init()
 
 checkSound = pygame.mixer.Sound("./sounds/checking.wav")
@@ -29,7 +30,7 @@ startupCompleteSound = pygame.mixer.Sound("./sounds/startupComplete.wav")
 # Called for every client connecting (after handshake)
 def new_client(client, server):
     News.writeJSON()
-    if (allSubsystems == workingSubsystems):
+    if allSubsystems == workingSubsystems:
         response = f" $$ All subsystems are working!"
     else:
         brokenSubsystems = set(allSubsystems) - set(workingSubsystems)
@@ -41,7 +42,10 @@ def new_client(client, server):
 
 # Called for every client disconnecting
 def client_left(client, server):
-    rich.print(f"[bold red]Client(%d) disconnected [/bold red]" % client['id'])
+    rich.print(f"[bold red]Client disconnected [/bold red]")
+    os.system("cls")
+    print(pyfiglet.figlet_format("PACE", font="slant"))
+    rich.print(f"[purple]Working subsystems: {workingSubsystems}[/purple]\n\n")
 
 
 # Called when a client sends a message
@@ -59,6 +63,7 @@ def handle_exit(*args):
     except BaseException as exception:
         print(exception)
 
+
 if __name__ == "__main__":
     # Check if subsystems are working
 
@@ -70,7 +75,6 @@ if __name__ == "__main__":
 
     volume.SetMasterVolumeLevel(-65.25 * .5, None)
 
-
     for subsystem in workingSubsystems:
         rich.print(f"[bold yellow]Checking {subsystem}...[/bold yellow]")
         Beep(800, 500)
@@ -80,45 +84,13 @@ if __name__ == "__main__":
             f.close()
             rich.print(f"[bold green]{subsystem} is present![/bold green]")
             try:
-                if subsystem == "Weather":
-                    import Weather
-
-                    Weather.check()
-                    Beep(1200, 500)
-                    rich.print(f"[bold green]{subsystem} is working![/bold green]")
-
-                elif subsystem == "News":
-                    import News
-
-                    News.check()
-                    Beep(1200, 500)
-                    rich.print(f"[bold green]{subsystem} is working![/bold green]")
-
-                elif subsystem == "Wolfram":
-                    import Wolfram
-
-                    Wolfram.check()
-                    Beep(1200, 500)
-                    rich.print(f"[bold green]{subsystem} is working![/bold green]\n\n")
-
-                elif subsystem == "Responses":
-                    import Responses
-
-                    Responses.check()
-                    Beep(1200, 500)
-                    rich.print(f"[bold green]{subsystem} is working![/bold green]\n\n")
-
-                elif subsystem == "gpt":
-                    import gpt
-
-                    gpt.check()
-                    Beep(1200, 500)
-                    rich.print(f"[bold green]{subsystem} is working![/bold green]\n\n")
-            except:
-                rich.print(f"[bold red]{subsystem} is down![/bold red]\n\n")
+                exec(f"import {subsystem}")
+                exec(f"{subsystem}.check()")
+                Beep(1200, 500)
+                rich.print(f"[bold green]{subsystem} is working![/bold green]\n\n")
+            except BaseException as exception:
+                rich.print(f"[bold red]{subsystem} is not working! {exception}[/bold red]\n\n")
                 workingSubsystems.remove(subsystem)
-                Beep(900, 500)
-                sleep(1)
             Beep(1200, 500)
             sleep(1)
         except:

@@ -80,17 +80,3 @@ function speakText(textToSpeak){
   console.log(myAudio.src)
   myAudio.play()
 }
-
-
-
-// take input from #inputline, send it to the websocket, then clear the input line
-let inputline = document.getElementById("inputline")
-inputline.onkeydown = function(e) {
-    if (e.keyCode === 13) {
-        ws.send(inputline.value)
-        iSentTheMessage = true
-        inputline.value = ""
-        queryText.innerHTML = ""
-        response.innerHTML = ""
-    }
-}
