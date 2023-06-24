@@ -4,6 +4,7 @@ import Weather
 import News
 import Carter
 import Wolfram
+
 '''
 
 Carter + GPT-3
@@ -53,6 +54,7 @@ def generateResponse(text):
     return gptResponse
 '''
 
+
 def generateResponse(text):
     carterResponse = Carter.getCarterResponse(text)
     wolframResponse = Wolfram.getWolframResponse(text)
@@ -91,11 +93,9 @@ def generateResponse(text):
     # else:
     #     rich.print(f"[bold yellow]Carter Response | No Intents[/bold yellow]")
     #     return agent_response_text
+
     return agent_response_text
-
-
 
 
 def check():
     print(generateResponse("1+1"))
-

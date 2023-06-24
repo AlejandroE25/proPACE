@@ -11,6 +11,8 @@ import atexit
 
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+import Carter
+
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 import pyfiglet
@@ -30,11 +32,13 @@ startupCompleteSound = pygame.mixer.Sound("./sounds/startupComplete.wav")
 # Called for every client connecting (after handshake)
 def new_client(client, server):
     News.writeJSON()
-    if allSubsystems == workingSubsystems:
-        response = f" $$ All subsystems are working!"
-    else:
-        brokenSubsystems = set(allSubsystems) - set(workingSubsystems)
-        response = f" $$ Subsystems: {brokenSubsystems} are not working!"
+    # if allSubsystems == workingSubsystems:
+    #     response = f" $$ All subsystems are working!"
+    # else:
+    #     brokenSubsystems = set(allSubsystems) - set(workingSubsystems)
+    #     response = f" $$ Subsystems: {brokenSubsystems} are not working!"
+
+    response = " $$ " + Carter.getOpener()
 
     server.send_message(client, response)
     rich.print(f"[bold green]New client connected and was given id {client['id']}[/bold green]")
@@ -119,7 +123,7 @@ if __name__ == "__main__":
     server.set_fn_client_left(client_left)
     server.set_fn_message_received(message_received)
     startupCompleteSound.play()
-    print(pyfiglet.figlet_format("PACE", font="slant"))
+    rich.print(f"[yellow] {pyfiglet.figlet_format('PACE', font='slant')} [/yellow]")
     rich.print(f"[purple]Working subsystems: {workingSubsystems}[/purple]\n\n")
     os.system("python3 -m webbrowser http://10.0.0.227/propace/guis/desktop")
     server.run_forever()

@@ -22,7 +22,7 @@ window.onload = function() {
     })
     const news = document.getElementById("news")
 
-    // scroll trough the news element really slowly, then reset the scroll position with an ease animtion
+    // scroll through the news element really slowly, then reset the scroll position with an ease animtion
     setInterval(() => {
         news.scrollBy(0, 1)
         if (news.scrollTop == news.scrollHeight - news.clientHeight) {
@@ -59,7 +59,7 @@ function currentTime() {
 
 
 function connect() {
-    ws = new WebSocket("ws://73.110.35.182:9001");
+    ws = new WebSocket("ws://73.246.38.149:9001");
     ws.onmessage = function (evt) {
         let received_msg = evt.data;
 

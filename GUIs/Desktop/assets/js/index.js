@@ -49,7 +49,7 @@ function currentTime() {
 
 
 function connect() {
-    ws = new WebSocket("ws://73.110.35.182:9001");
+    ws = new WebSocket("ws://73.246.38.149:9001");
     ws.onmessage = function (evt) {
         let received_msg = evt.data;
 
@@ -57,6 +57,8 @@ function connect() {
         let splitResponse = received_msg.split("$$")
         queryText.innerHTML = splitResponse[0]
         response.innerHTML = splitResponse[1]
+        fitFont(response)
+        fitFont(queryText)
 
         if (iSentTheMessage == true) {
             speakText(splitResponse[1])
@@ -67,6 +69,17 @@ function connect() {
         console.log("Connection is closed...");
         setTimeout(connect, 1000);
     }
+}
+
+function fitFont(elem){
+  var child = elem.children[0];
+  var getFontSize = parseFloat(window.getComputedStyle(child).getPropertyValue('font-size'));
+
+  while(child.offsetHeight>elem.clientHeight){
+    getFontSize -= .1;
+    child.style.fontSize = getFontSize + 'px';
+  }
+  child.style.visibility = 'visible';
 }
 
 var iSentTheMessage = true

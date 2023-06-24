@@ -3,6 +3,7 @@ import platform
 import subprocess
 import os
 
+
 def getLocation():
     response = requests.get("http://ip-api.com/json")
     response = response.json()
@@ -29,10 +30,10 @@ def getWeather():
 
 # Check to see if we can reach the servers
 def check():
-    param = '-n' if platform.system().lower()=='windows' else '-c'
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
 
     # Building the command. Ex: "ping -c 1 google.com"
     command = ['ping', param, '1', "api.openweathermap.org"]
 
-    return subprocess.call(command) == 0
     print(getWeather())
+    return(subprocess.call(command) == 0)
