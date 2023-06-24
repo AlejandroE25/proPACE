@@ -19,19 +19,18 @@ def getCarterResponse(text):
     data = json.dumps({
         "text": f"{text}",
         "key": f"{api_key}",
-        # "playerId": "Pixel"
-        "user_id": "Pixel",
+        "user_id": "Pixel"
     })
 
     headers = {"Content-Type": "application/json"}
 
     # resp = requests.request("POST", "https://api.carterapi.com/v0/chat", data=data, headers=headers, stream=True)
-    # resp = requests.request("POST", "https://api.carterlabs.ai/chat", data=data, headers=headers, stream=True)
-    resp = requests.request("POST", "https://unstable.carterlabs.ai/api/chat", data=data, headers=headers, stream=True)
+    resp = requests.request("POST", "https://api.carterlabs.ai/api/chat", data=data, headers=headers, stream=True)
+#     resp = requests.request("POST", "https://unstable.carterlabs.ai/api/chat", data=data, headers=headers, stream=True)
     return resp.json()
 
 def getOpener():
-    reqUrl = "https://api.carterlabs.ai/opener"
+    reqUrl = "https://api.carterlabs.ai/api/opener"
     headers = {"Accept": "*/*",
                "Content-Type": "application/json"}
 
@@ -45,4 +44,4 @@ def getOpener():
     return response.json()['sentence']
 
 def check():
-    getCarterResponse("hello")
+    return getCarterResponse("hello")['output']

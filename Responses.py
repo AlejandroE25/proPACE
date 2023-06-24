@@ -98,4 +98,4 @@ def generateResponse(text):
 
 
 def check():
-    print(generateResponse("1+1"))
+    return generateResponse("1+1")
