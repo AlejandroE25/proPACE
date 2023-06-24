@@ -26,8 +26,8 @@ def getCarterResponse(text):
     headers = {"Content-Type": "application/json"}
 
     # resp = requests.request("POST", "https://api.carterapi.com/v0/chat", data=data, headers=headers, stream=True)
-    # resp = requests.request("POST", "https://api.carterlabs.ai/chat", data=data, headers=headers, stream=True)
-    resp = requests.request("POST", "https://unstable.carterlabs.ai/api/chat", data=data, headers=headers, stream=True)
+    resp = requests.request("POST", "https://api.carterlabs.ai/chat", data=data, headers=headers, stream=True)
+#     resp = requests.request("POST", "https://unstable.carterlabs.ai/api/chat", data=data, headers=headers, stream=True)
     return resp.json()
 
 def getOpener():
