@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { DisplayData, LayoutConfig } from './types.js';
+import { TerminalDetector, TerminalCapabilities } from './terminalDetector.js';
 
 /**
  * Terminal UI Renderer
@@ -11,12 +12,14 @@ export class TerminalUI {
   private layout: LayoutConfig;
   private terminalWidth: number;
   private terminalHeight: number;
+  private capabilities: TerminalCapabilities;
 
   constructor() {
     this.displayData = this.getDefaultDisplayData();
     this.terminalWidth = process.stdout.columns || 80;
     this.terminalHeight = process.stdout.rows || 24;
     this.layout = this.calculateLayout();
+    this.capabilities = TerminalDetector.detect();
 
     // Listen for terminal resize
     process.stdout.on('resize', () => {
@@ -151,15 +154,36 @@ export class TerminalUI {
   }
 
   /**
+   * Render only the header (for clock updates without clearing input)
+   */
+  renderHeaderOnly(): void {
+    // Get current cursor position before rendering
+    const inputPos = this.getInputPosition();
+
+    this.renderHeader();
+
+    // Restore cursor to input position explicitly (more compatible than \x1b7/\x1b8)
+    this.moveCursor(inputPos.x, inputPos.y);
+  }
+
+  /**
    * Render header panel
    */
   private renderHeader(): void {
     const { connectionState, time } = this.displayData;
-    const statusIcon = connectionState.connected
-      ? chalk.green('●')
-      : connectionState.reconnecting
-        ? chalk.yellow('●')
-        : chalk.red('●');
+
+    // Use ASCII fallback for status icon if no Unicode support
+    const statusIcon = this.capabilities.supportsUnicode
+      ? (connectionState.connected
+          ? chalk.green('●')
+          : connectionState.reconnecting
+            ? chalk.yellow('●')
+            : chalk.red('●'))
+      : (connectionState.connected
+          ? chalk.green('[*]')
+          : connectionState.reconnecting
+            ? chalk.yellow('[~]')
+            : chalk.red('[X]'));
 
     const statusText = connectionState.connected
       ? 'Connected'
@@ -167,9 +191,9 @@ export class TerminalUI {
         ? `Reconnecting (${connectionState.attemptCount})`
         : 'Disconnected';
 
-    // ASCII art logo - "PACE" with italic formatting
-    const italic = '\x1b[3m';
-    const reset = '\x1b[0m';
+    // ASCII art logo - "PACE" with optional italic formatting
+    const italic = this.capabilities.supportsItalic ? '\x1b[3m' : '';
+    const reset = this.capabilities.supportsItalic ? '\x1b[0m' : '';
 
     const logo  = chalk.bold.white(italic + '                      ____  ___   ____________' + reset);
     const logo2 = chalk.bold.white(italic + '    ____  _________  / __ \\/   | / ____/ ____/' + reset);
@@ -201,7 +225,7 @@ export class TerminalUI {
     const infoBox = boxen(infoContent, {
       padding: { left: 1, right: 1, top: 0, bottom: 0 },
       margin: 0,
-      borderStyle: 'round',
+      borderStyle: this.capabilities.supportsUnicode ? 'round' : 'single',
       borderColor: 'cyan',
       width: Math.floor(this.layout.header.width * 0.35),
     });
@@ -218,21 +242,24 @@ export class TerminalUI {
   private renderWeather(): void {
     const { weather } = this.displayData;
 
+    // Use emoji or ASCII fallback
+    const weatherIcon = this.capabilities.supportsEmoji ? '☁️  ' : '[W] ';
+
     let content: string;
     if (weather) {
       const lastUpdated = weather.lastUpdated.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
       });
-      content = `${chalk.bold('☁️  WEATHER')}\n\n${chalk.white.bold(weather.city)}\n${chalk.yellow(`${weather.temp}°F`)} • ${weather.description}\nFeels like ${weather.feelsLike}°F\n\n${chalk.gray(`Updated: ${lastUpdated}`)}`;
+      content = `${chalk.bold(weatherIcon + 'WEATHER')}\n\n${chalk.white.bold(weather.city)}\n${chalk.yellow(`${weather.temp}°F`)} • ${weather.description}\nFeels like ${weather.feelsLike}°F\n\n${chalk.gray(`Updated: ${lastUpdated}`)}`;
     } else {
-      content = `${chalk.bold('☁️  WEATHER')}\n\n${chalk.gray('Loading...')}`;
+      content = `${chalk.bold(weatherIcon + 'WEATHER')}\n\n${chalk.gray('Loading...')}`;
     }
 
     const box = boxen(content, {
       padding: { left: 1, right: 1, top: 0, bottom: 0 },
       margin: 0,
-      borderStyle: 'round',
+      borderStyle: this.capabilities.supportsUnicode ? 'round' : 'single',
       borderColor: 'yellow',
       width: this.layout.weather.width,
       height: this.layout.weather.height,
@@ -245,8 +272,12 @@ export class TerminalUI {
   /**
    * Render news panel
    */
-  renderNews(currentIndex: number = 0, totalCount: number = 0): void {
+  renderNews(_currentIndex: number = 0, _totalCount: number = 0): void {
     const { news } = this.displayData;
+
+    // Use emoji or ASCII fallback
+    const newsIcon = this.capabilities.supportsEmoji ? '📰 ' : '[N] ';
+    const bullet = this.capabilities.supportsUnicode ? '•' : '*';
 
     let content: string;
     if (news && news.headlines.length > 0) {
@@ -264,23 +295,23 @@ export class TerminalUI {
 
       const headlinesList = news.headlines
         .slice(0, headlinesToShow)
-        .map((headline, index) => {
+        .map((headline) => {
           const truncated = headline.length > maxWidth - 3
             ? headline.substring(0, maxWidth - 6) + '...'
             : headline;
-          return `${chalk.gray('•')} ${chalk.white(truncated)}`;
+          return `${chalk.gray(bullet)} ${chalk.white(truncated)}`;
         })
         .join('\n');
 
-      content = `${chalk.bold('📰 NEWS HEADLINES')}\n\n${headlinesList}\n\n${chalk.gray(`Updated: ${lastUpdated}`)}`;
+      content = `${chalk.bold(newsIcon + 'NEWS HEADLINES')}\n\n${headlinesList}\n\n${chalk.gray(`Updated: ${lastUpdated}`)}`;
     } else {
-      content = `${chalk.bold('📰 NEWS HEADLINES')}\n\n${chalk.gray('Loading...')}`;
+      content = `${chalk.bold(newsIcon + 'NEWS HEADLINES')}\n\n${chalk.gray('Loading...')}`;
     }
 
     const box = boxen(content, {
       padding: { left: 1, right: 1, top: 0, bottom: 0 },
       margin: 0,
-      borderStyle: 'round',
+      borderStyle: this.capabilities.supportsUnicode ? 'round' : 'single',
       borderColor: 'magenta',
       width: this.layout.news.width,
       height: this.layout.news.height,
@@ -296,25 +327,28 @@ export class TerminalUI {
   private renderConversation(): void {
     const { conversation } = this.displayData;
 
+    // Use emoji or ASCII fallback
+    const chatIcon = this.capabilities.supportsEmoji ? '💬 ' : '[C] ';
+
     let content: string;
     if (conversation.query && conversation.response) {
       const maxWidth = this.layout.conversation.width - 6;
       const query = this.wrapText(conversation.query, maxWidth);
       const responseFormatted = this.formatResponseText(conversation.response);
       const response = this.wrapText(responseFormatted, maxWidth);
-      content = `${chalk.bold('💬 CHAT')}\n\n${chalk.cyan.bold('You:')}\n${chalk.white(query)}\n\n${chalk.green.bold('PACE:')}\n${response}`;
+      content = `${chalk.bold(chatIcon + 'CHAT')}\n\n${chalk.cyan.bold('You:')}\n${chalk.white(query)}\n\n${chalk.green.bold('PACE:')}\n${response}`;
     } else if (conversation.query) {
       const maxWidth = this.layout.conversation.width - 6;
       const query = this.wrapText(conversation.query, maxWidth);
-      content = `${chalk.bold('💬 CHAT')}\n\n${chalk.cyan.bold('You:')}\n${chalk.white(query)}\n\n${chalk.green.bold('PACE:')}\n${chalk.gray('Thinking...')}`;
+      content = `${chalk.bold(chatIcon + 'CHAT')}\n\n${chalk.cyan.bold('You:')}\n${chalk.white(query)}\n\n${chalk.green.bold('PACE:')}\n${chalk.gray('Thinking...')}`;
     } else {
-      content = `${chalk.bold('💬 CHAT')}\n\n${chalk.gray('Type a message below and press Enter to chat...')}`;
+      content = `${chalk.bold(chatIcon + 'CHAT')}\n\n${chalk.gray('Type a message below and press Enter to chat...')}`;
     }
 
     const box = boxen(content, {
       padding: { left: 1, right: 1, top: 0, bottom: 0 },
       margin: 0,
-      borderStyle: 'round',
+      borderStyle: this.capabilities.supportsUnicode ? 'round' : 'single',
       borderColor: 'green',
       width: this.layout.conversation.width,
       height: this.layout.conversation.height,
@@ -333,7 +367,7 @@ export class TerminalUI {
     const box = boxen(content, {
       padding: 0,
       margin: 0,
-      borderStyle: 'round',
+      borderStyle: this.capabilities.supportsUnicode ? 'round' : 'single',
       borderColor: 'white',
       width: this.layout.input.width,
     });
@@ -343,23 +377,6 @@ export class TerminalUI {
 
     // Position cursor in input area
     this.moveCursor(4, this.layout.input.y + 1);
-  }
-
-  /**
-   * Helper: Pad a line with text on left and right
-   */
-  private padLine(left: string, right: string, width: number): string {
-    const leftStripped = this.stripAnsi(left);
-    const rightStripped = this.stripAnsi(right);
-    const padding = width - leftStripped.length - rightStripped.length;
-    return left + ' '.repeat(Math.max(0, padding)) + right;
-  }
-
-  /**
-   * Helper: Strip ANSI codes for length calculation
-   */
-  private stripAnsi(str: string): string {
-    return str.replace(/\x1b\[[0-9;]*m/g, '');
   }
 
   /**
@@ -412,5 +429,19 @@ export class TerminalUI {
       x: 4,
       y: this.layout.input.y + 1,
     };
+  }
+
+  /**
+   * Get terminal capabilities for debugging
+   */
+  getCapabilities(): TerminalCapabilities {
+    return this.capabilities;
+  }
+
+  /**
+   * Get terminal capabilities description
+   */
+  getCapabilitiesDescription(): string {
+    return TerminalDetector.describe(this.capabilities);
   }
 }

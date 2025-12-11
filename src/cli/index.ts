@@ -140,7 +140,8 @@ class PACETerminal {
     // Time manager events
     this.timeManager.on('update', (timeData) => {
       this.ui.updateData({ time: timeData });
-      this.renderUI();
+      // Only update header to avoid clearing user input
+      this.ui.renderHeaderOnly();
     });
 
     // Weather manager events
@@ -273,6 +274,13 @@ Just type your message and press Enter to chat with PACE!`;
    * Start the application
    */
   async start(): Promise<void> {
+    // Log terminal capabilities for debugging
+    if (process.env.DEBUG) {
+      console.log('Terminal capabilities:', this.ui.getCapabilitiesDescription());
+      console.log('Press any key to continue...');
+      await new Promise((resolve) => process.stdin.once('data', resolve));
+    }
+
     // Initialize UI
     this.renderUI();
 
@@ -287,28 +295,6 @@ Just type your message and press Enter to chat with PACE!`;
     this.input.enable();
   }
 
-  /**
-   * Restart the application
-   */
-  private restart(): void {
-    // Stop all managers
-    this.timeManager.stop();
-    this.weatherManager.stop();
-    this.newsManager.stop();
-
-    // Disconnect client
-    this.client.disconnect();
-
-    // Close input
-    this.input.close();
-
-    // Clear screen and show restart message
-    console.clear();
-    console.log('Restarting PACE Terminal...');
-    
-    // Exit the process to trigger a restart (typically via process manager or npm script)
-    process.exit(0);
-  }
 
   /**
    * Shutdown the application
