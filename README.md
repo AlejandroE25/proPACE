@@ -4,7 +4,7 @@ Personal AI Assistant with persistent memory and WebSocket communication.
 
 ## Overview
 
-proPACE is a Jarvis-like AI assistant powered by Anthropic Claude 3.5 Sonnet with:
+proPACE is a Jarvis-like AI assistant powered by Anthropic Claude 4.5 Sonnet with:
 - **Persistent Memory**: Remembers important details across conversations
 - **WebSocket Communication**: Real-time messaging with web/CLI clients
 - **Subsystems**: Weather, News, Wolfram Alpha integration
@@ -117,3 +117,4 @@ See deployment guide in docs/ for detailed instructions on deploying to Oracle C
 ## License
 
 MIT
+
