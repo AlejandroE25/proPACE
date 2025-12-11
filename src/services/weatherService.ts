@@ -42,7 +42,7 @@ export class WeatherService {
         throw new Error(`Failed to fetch location: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
 
       const location: Location = {
         lat: data.lat,
@@ -90,7 +90,7 @@ export class WeatherService {
         throw new Error(`Failed to fetch weather: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
 
       const weatherData: WeatherData = {
         city: location.city,

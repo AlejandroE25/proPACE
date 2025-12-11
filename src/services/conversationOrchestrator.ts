@@ -1,5 +1,7 @@
 import { ClaudeClient } from '../clients/claudeClient.js';
 import { MemoryStore } from './memoryStore.js';
+import { WeatherService } from './weatherService.js';
+import { NewsService } from './newsService.js';
 import { ConversationMessage, Memory } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
@@ -11,11 +13,20 @@ import { config } from '../config/index.js';
 export class ConversationOrchestrator {
   private claudeClient: ClaudeClient;
   private memoryStore: MemoryStore;
+  private weatherService: WeatherService;
+  private newsService: NewsService;
   private conversationHistory: Map<string, ConversationMessage[]> = new Map();
 
-  constructor(claudeClient: ClaudeClient, memoryStore: MemoryStore) {
+  constructor(
+    claudeClient: ClaudeClient,
+    memoryStore: MemoryStore,
+    weatherService: WeatherService,
+    newsService: NewsService
+  ) {
     this.claudeClient = claudeClient;
     this.memoryStore = memoryStore;
+    this.weatherService = weatherService;
+    this.newsService = newsService;
   }
 
   /**
@@ -29,6 +40,14 @@ export class ConversationOrchestrator {
       }
 
       const history = this.conversationHistory.get(clientId)!;
+
+      // Check for subsystem routing first
+      const subsystemResponse = await this.routeToSubsystem(message);
+      if (subsystemResponse) {
+        // Update conversation history
+        this.updateConversationHistory(clientId, message, subsystemResponse);
+        return subsystemResponse;
+      }
 
       // Search for relevant memories
       const relevantMemories = this.searchRelevantMemories(message);
@@ -54,6 +73,39 @@ export class ConversationOrchestrator {
       logger.error('Error processing message:', error);
       return 'Sorry, I encountered an error processing your message.';
     }
+  }
+
+  /**
+   * Route message to appropriate subsystem if applicable
+   */
+  private async routeToSubsystem(message: string): Promise<string | null> {
+    const lowerMessage = message.toLowerCase();
+
+    // Weather queries
+    if (
+      lowerMessage.includes('weather') ||
+      lowerMessage.includes('temperature') ||
+      lowerMessage.includes('forecast') ||
+      lowerMessage.match(/how'?s it (outside|out)/i) ||
+      lowerMessage.match(/what'?s it like outside/i)
+    ) {
+      logger.info('Routing to Weather subsystem');
+      return await this.weatherService.getWeatherFormatted();
+    }
+
+    // News queries
+    if (
+      lowerMessage.includes('news') ||
+      lowerMessage.includes('headlines') ||
+      lowerMessage.includes('latest') ||
+      lowerMessage.match(/what'?s (happening|going on)/i)
+    ) {
+      logger.info('Routing to News subsystem');
+      return await this.newsService.getNewsFormatted();
+    }
+
+    // No subsystem match
+    return null;
   }
 
   /**

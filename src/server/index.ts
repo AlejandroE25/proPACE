@@ -3,6 +3,8 @@ import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { ClaudeClient } from '../clients/claudeClient.js';
 import { MemoryStore } from '../services/memoryStore.js';
+import { WeatherService } from '../services/weatherService.js';
+import { NewsService } from '../services/newsService.js';
 import { ConversationOrchestrator } from '../services/conversationOrchestrator.js';
 
 /**
@@ -12,13 +14,22 @@ class PACEServer {
   private wsServer: PACEWebSocketServer;
   private claudeClient: ClaudeClient;
   private memoryStore: MemoryStore;
+  private weatherService: WeatherService;
+  private newsService: NewsService;
   private orchestrator: ConversationOrchestrator;
 
   constructor() {
     // Initialize AI and memory systems
     this.claudeClient = new ClaudeClient();
     this.memoryStore = new MemoryStore(config.databasePath);
-    this.orchestrator = new ConversationOrchestrator(this.claudeClient, this.memoryStore);
+    this.weatherService = new WeatherService();
+    this.newsService = new NewsService();
+    this.orchestrator = new ConversationOrchestrator(
+      this.claudeClient,
+      this.memoryStore,
+      this.weatherService,
+      this.newsService
+    );
 
     // Initialize WebSocket server
     this.wsServer = new PACEWebSocketServer({
