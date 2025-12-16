@@ -83,7 +83,45 @@ class PACEServer {
       config.agentPlanningModel
     );
 
+    // Wire up event handlers for background task completion
+    this.setupAgentEventHandlers();
+
     logger.info('Agent mode initialized successfully');
+  }
+
+  /**
+   * Setup event handlers for agent system
+   */
+  private setupAgentEventHandlers(): void {
+    if (!this.agentOrchestrator) return;
+
+    const executor = this.agentOrchestrator.getExecutor();
+
+    // Task completed - send final answer to client
+    executor.on('task_completed', ({ taskId, clientId, result }) => {
+      logger.info(`Task ${taskId} completed, sending result to client ${clientId}`);
+
+      // Broadcast the final answer
+      const message = `Task Complete$$${result.finalAnswer}`;
+      this.wsServer.broadcast(message);
+    });
+
+    // Task failed - send error to client
+    executor.on('task_failed', ({ taskId, clientId, error }) => {
+      logger.error(`Task ${taskId} failed for client ${clientId}: ${error}`);
+
+      // Broadcast the error
+      const message = `Task Failed$$I encountered an error: ${error}`;
+      this.wsServer.broadcast(message);
+    });
+
+    // Progress updates (optional - for real-time feedback)
+    executor.on('progress', ({ planId, update }) => {
+      logger.debug(`Progress update for plan ${planId}: ${update.message}`);
+
+      // Optionally broadcast progress updates
+      // this.wsServer.broadcast(`Progress$$${update.message}`);
+    });
   }
 
   /**
