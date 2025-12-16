@@ -102,6 +102,15 @@ export class PACEWebSocketServer {
     logger.info(`Client ${clientId} sent: ${message}`);
 
     try {
+      // Send immediate acknowledgment for non-trivial queries
+      // Quick queries like "weather" or "news" don't need acknowledgment
+      const isQuickQuery = /^(what'?s? the )?(weather|news|time|date)[\?!.]*$/i.test(message.trim());
+
+      if (!isQuickQuery) {
+        const acknowledgmentMessage = `${message}$$🔍 Working on it... This may take a moment.`;
+        this.broadcast(acknowledgmentMessage);
+      }
+
       // Call the message handler if set
       let response: string;
       if (this.onMessageHandler) {
@@ -111,7 +120,7 @@ export class PACEWebSocketServer {
         response = `Echo: ${message}`;
       }
 
-      // Broadcast to all clients
+      // Broadcast final response to all clients
       const broadcastMessage = `${message}$$${response}`;
       this.broadcast(broadcastMessage);
     } catch (error) {
