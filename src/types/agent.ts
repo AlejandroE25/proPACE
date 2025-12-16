@@ -485,3 +485,90 @@ export enum MetaQueryType {
   WHAT_CAN_YOU_DO = 'what_can_you_do',
   PLUGIN_INFO = 'plugin_info'
 }
+
+/**
+ * Task state for concurrent execution tracking
+ */
+export enum TaskState {
+  /** Task created but not started */
+  PENDING = 'pending',
+
+  /** Task currently executing */
+  ACTIVE = 'active',
+
+  /** Task paused (e.g., waiting for permission or processing context update) */
+  PAUSED = 'paused',
+
+  /** Task completed successfully */
+  COMPLETED = 'completed',
+
+  /** Task failed with error */
+  FAILED = 'failed',
+
+  /** Task cancelled by user or system */
+  CANCELLED = 'cancelled'
+}
+
+/**
+ * Active task tracking for concurrent execution
+ */
+export interface ActiveTask {
+  /** Unique task identifier */
+  taskId: string;
+
+  /** Client ID */
+  clientId: string;
+
+  /** Original user query */
+  query: string;
+
+  /** Current task state */
+  state: TaskState;
+
+  /** Execution plan ID */
+  planId?: string;
+
+  /** Plan execution tracker */
+  execution?: PlanExecution;
+
+  /** When task was created */
+  createdAt: Date;
+
+  /** When task started execution */
+  startedAt?: Date;
+
+  /** When task completed */
+  completedAt?: Date;
+
+  /** Context updates received during execution */
+  contextUpdates: ContextUpdate[];
+
+  /** Task topic/category for relevance matching */
+  topic?: string;
+
+  /** Promise for background execution */
+  executionPromise?: Promise<ExecutionResult>;
+}
+
+/**
+ * Context update from user during task execution
+ */
+export interface ContextUpdate {
+  /** Update ID */
+  id: string;
+
+  /** Task this update applies to */
+  taskId: string;
+
+  /** New user message */
+  message: string;
+
+  /** When update was received */
+  timestamp: Date;
+
+  /** Whether this update was processed */
+  processed: boolean;
+
+  /** How the update affected the plan */
+  impact?: 'plan_modified' | 'no_change' | 'task_cancelled';
+}
