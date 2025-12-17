@@ -14,6 +14,7 @@ import { WeatherPlugin } from '../plugins/core/weatherPlugin.js';
 import { NewsPlugin } from '../plugins/core/newsPlugin.js';
 import { WolframPlugin } from '../plugins/core/wolframPlugin.js';
 import { MemoryPlugin } from '../plugins/core/memoryPlugin.js';
+import { DiagnosticPlugin } from '../plugins/core/diagnosticPlugin.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
 
 /**
@@ -67,11 +68,16 @@ class PACEServer {
     const newsPlugin = new NewsPlugin();
     const wolframPlugin = new WolframPlugin();
     const memoryPlugin = new MemoryPlugin();
+    const diagnosticPlugin = new DiagnosticPlugin();
 
     await this.pluginRegistry.register(weatherPlugin);
     await this.pluginRegistry.register(newsPlugin);
     await this.pluginRegistry.register(wolframPlugin);
     await this.pluginRegistry.register(memoryPlugin);
+    await this.pluginRegistry.register(diagnosticPlugin);
+
+    // Give diagnostic plugin access to the registry (needed for SystemDiagnostics)
+    diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
 
     logger.info(`Registered ${this.pluginRegistry.getPluginCount()} core plugins`);
 

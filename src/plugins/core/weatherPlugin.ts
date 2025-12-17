@@ -41,7 +41,7 @@ export class WeatherPlugin implements Plugin {
           required: false
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {

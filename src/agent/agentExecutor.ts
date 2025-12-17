@@ -15,14 +15,13 @@ import {
   ExecutionPlan,
   ExecutionStep,
   PlanExecution,
-  StepExecution,
   ExecutionStatus,
   ExecutionResult,
   ProgressUpdate,
   AuditEventType,
   ContextUpdate
 } from '../types/agent';
-import { ExecutionContext, ToolResult } from '../types/plugin';
+import { ExecutionContext } from '../types/plugin';
 
 export class AgentExecutor extends EventEmitter {
   private pluginRegistry: PluginRegistry;

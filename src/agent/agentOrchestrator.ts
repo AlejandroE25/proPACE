@@ -15,7 +15,6 @@ import { AuditLogger } from './auditLogger';
 import { ConcurrentRequestManager } from './concurrentRequestManager';
 import { SystemIntrospector } from './systemIntrospector';
 import {
-  ExecutionResult,
   PlanningContext,
   AuditEventType,
   TaskState,

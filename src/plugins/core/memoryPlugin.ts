@@ -60,7 +60,7 @@ export class MemoryPlugin implements Plugin {
           required: false
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {
@@ -136,7 +136,7 @@ export class MemoryPlugin implements Plugin {
           default: 100
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {
@@ -202,7 +202,7 @@ export class MemoryPlugin implements Plugin {
           required: false
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {
@@ -261,7 +261,7 @@ export class MemoryPlugin implements Plugin {
           required: true
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {

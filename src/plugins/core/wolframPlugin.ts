@@ -29,7 +29,7 @@ export class WolframPlugin implements Plugin {
       description: 'The question or computation to solve',
       required: true
     }],
-    execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+    execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
       const startTime = Date.now();
       try {
         if (!this.wolframService) throw new Error('Wolfram service not initialized');

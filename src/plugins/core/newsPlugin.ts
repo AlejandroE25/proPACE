@@ -46,7 +46,7 @@ export class NewsPlugin implements Plugin {
           }
         }
       ],
-      execute: async (params: Record<string, any>, context: ExecutionContext): Promise<ToolResult> => {
+      execute: async (params: Record<string, any>, _context: ExecutionContext): Promise<ToolResult> => {
         const startTime = Date.now();
 
         try {
@@ -99,7 +99,7 @@ export class NewsPlugin implements Plugin {
   /**
    * Initialize the news plugin
    */
-  async initialize(config: Record<string, any>): Promise<void> {
+  async initialize(_config: Record<string, any>): Promise<void> {
     try {
       this.newsService = new NewsService();
       logger.info('News plugin initialized');

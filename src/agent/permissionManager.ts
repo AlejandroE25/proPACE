@@ -120,7 +120,7 @@ export class PermissionManager extends EventEmitter {
     this.emit('permission_request', request);
 
     // Wait for response or timeout
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
         logger.warn(`Permission request ${requestId} timed out`);
