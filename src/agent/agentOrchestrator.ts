@@ -14,6 +14,9 @@ import { PermissionManager } from './permissionManager';
 import { AuditLogger } from './auditLogger';
 import { ConcurrentRequestManager } from './concurrentRequestManager';
 import { SystemIntrospector } from './systemIntrospector';
+import { ErrorRecoveryManager } from './errorRecoveryManager';
+import { HealthMonitor } from './healthMonitor';
+import { SystemDiagnostics } from './diagnostics';
 import {
   PlanningContext,
   AuditEventType,
@@ -29,6 +32,9 @@ export class AgentOrchestrator {
   private auditLogger: AuditLogger;
   private concurrentRequestManager: ConcurrentRequestManager;
   private introspector: SystemIntrospector;
+  private recoveryManager: ErrorRecoveryManager;
+  private healthMonitor: HealthMonitor;
+  private diagnostics: SystemDiagnostics;
 
   /** Conversation history per client */
   private conversationHistory: Map<
@@ -50,6 +56,20 @@ export class AgentOrchestrator {
     this.permissionManager = new PermissionManager();
     this.concurrentRequestManager = new ConcurrentRequestManager();
     this.introspector = new SystemIntrospector(pluginRegistry);
+
+    // Initialize recovery system
+    this.diagnostics = new SystemDiagnostics(pluginRegistry);
+    this.recoveryManager = new ErrorRecoveryManager(3, true);
+    this.healthMonitor = new HealthMonitor(
+      this.diagnostics,
+      this.recoveryManager,
+      {
+        checkInterval: 60000,  // 1 minute
+        autoRecover: true,
+        enableDegradedMode: true
+      }
+    );
+
     this.planner = new AgentPlanner(anthropicApiKey, pluginRegistry, planningModel);
     this.executor = new AgentExecutor(
       pluginRegistry,
@@ -61,7 +81,10 @@ export class AgentOrchestrator {
     // Setup event handlers
     this.setupEventHandlers();
 
-    logger.info('Agent orchestrator initialized');
+    // Start health monitoring
+    this.healthMonitor.start();
+
+    logger.info('Agent orchestrator initialized with health monitoring');
   }
 
   /**
@@ -343,6 +366,20 @@ export class AgentOrchestrator {
   }
 
   /**
+   * Get recovery manager (for WebSocket integration)
+   */
+  getRecoveryManager(): ErrorRecoveryManager {
+    return this.recoveryManager;
+  }
+
+  /**
+   * Get health monitor (for WebSocket integration)
+   */
+  getHealthMonitor(): HealthMonitor {
+    return this.healthMonitor;
+  }
+
+  /**
    * Handle meta-queries about system capabilities
    */
   private handleMetaQuery(metaQueryType: MetaQueryType, originalQuery: string): string {
@@ -462,7 +499,12 @@ export class AgentOrchestrator {
    * Clean up resources
    */
   async shutdown(): Promise<void> {
+    // Stop health monitoring
+    this.healthMonitor.stop();
+
+    // Close audit logger
     this.auditLogger.close();
+
     logger.info('Agent orchestrator shut down');
   }
 }

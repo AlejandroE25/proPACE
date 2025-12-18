@@ -15,6 +15,7 @@ import { NewsPlugin } from '../plugins/core/newsPlugin.js';
 import { WolframPlugin } from '../plugins/core/wolframPlugin.js';
 import { MemoryPlugin } from '../plugins/core/memoryPlugin.js';
 import { DiagnosticPlugin } from '../plugins/core/diagnosticPlugin.js';
+import { RecoveryPlugin } from '../plugins/core/recoveryPlugin.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
 
 /**
@@ -69,12 +70,14 @@ class PACEServer {
     const wolframPlugin = new WolframPlugin();
     const memoryPlugin = new MemoryPlugin();
     const diagnosticPlugin = new DiagnosticPlugin();
+    const recoveryPlugin = new RecoveryPlugin();
 
     await this.pluginRegistry.register(weatherPlugin);
     await this.pluginRegistry.register(newsPlugin);
     await this.pluginRegistry.register(wolframPlugin);
     await this.pluginRegistry.register(memoryPlugin);
     await this.pluginRegistry.register(diagnosticPlugin);
+    await this.pluginRegistry.register(recoveryPlugin);
 
     // Give diagnostic plugin access to the registry (needed for SystemDiagnostics)
     diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
@@ -87,6 +90,12 @@ class PACEServer {
       this.pluginRegistry,
       './data/audit.db',
       config.agentPlanningModel
+    );
+
+    // Give recovery plugin access to recovery system
+    recoveryPlugin.setRecoverySystem(
+      this.agentOrchestrator.getRecoveryManager(),
+      this.agentOrchestrator.getHealthMonitor()
     );
 
     // Wire up event handlers for background task completion
