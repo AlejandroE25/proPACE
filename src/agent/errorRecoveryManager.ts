@@ -282,6 +282,24 @@ export class ErrorRecoveryManager extends EventEmitter {
     component: string,
     health: ComponentHealth
   ): RecoveryStrategy {
+    // Anthropic API failures are CRITICAL - require manual intervention
+    if (component.includes('anthropic_api')) {
+      // First failure: retry (could be transient network issue)
+      if (health.consecutiveFailures === 1) {
+        return RecoveryStrategy.RETRY;
+      }
+      // Multiple failures: manual intervention needed
+      return RecoveryStrategy.MANUAL;
+    }
+
+    // Anthropic model failures - try retry first, then degrade
+    if (component.includes('anthropic_models')) {
+      if (health.consecutiveFailures < 2) {
+        return RecoveryStrategy.RETRY;
+      }
+      return RecoveryStrategy.DEGRADE;
+    }
+
     // Critical components should try restart
     if (component.includes('plugin_registry') || component.includes('orchestrator')) {
       return RecoveryStrategy.RESTART;

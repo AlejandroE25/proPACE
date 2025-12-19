@@ -166,6 +166,9 @@ export class HealthMonitor extends EventEmitter {
     // Map test IDs to standardized component names
     const mapping: Record<string, string> = {
       'plugin_registry_loaded': 'plugin_registry',
+      'anthropic_api_key_configured': 'anthropic_api',
+      'anthropic_api_connection': 'anthropic_api',
+      'anthropic_models_available': 'anthropic_models',
       'weather_tool_available': 'weather_tool',
       'news_tool_available': 'news_tool',
       'memory_tools_available': 'memory_tools',

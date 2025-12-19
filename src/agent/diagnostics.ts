@@ -8,6 +8,8 @@
 
 import { logger } from '../utils/logger';
 import { PluginRegistry } from '../plugins/pluginRegistry';
+import { config } from '../config';
+import Anthropic from '@anthropic-ai/sdk';
 
 export enum DiagnosticLevel {
   QUICK = 'quick',        // Fast smoke tests
@@ -106,6 +108,223 @@ export class SystemDiagnostics {
             testId: 'plugin_registry_loaded',
             status: DiagnosticStatus.FAIL,
             message: 'Plugin registry error',
+            error: error as Error,
+            duration: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Anthropic API Key Test
+    this.registerTest({
+      id: 'anthropic_api_key_configured',
+      name: 'Anthropic API Key Configured',
+      category: 'core',
+      description: 'Verify Anthropic API key is configured',
+      level: DiagnosticLevel.QUICK,
+      execute: async () => {
+        const startTime = Date.now();
+
+        try {
+          const hasApiKey = config.anthropicApiKey &&
+                           config.anthropicApiKey !== '' &&
+                           config.anthropicApiKey !== 'your_api_key_here';
+
+          if (!hasApiKey) {
+            return {
+              testId: 'anthropic_api_key_configured',
+              status: DiagnosticStatus.FAIL,
+              message: 'Anthropic API key not configured',
+              details: 'Set ANTHROPIC_API_KEY in .env file',
+              duration: Date.now() - startTime
+            };
+          }
+
+          // Basic validation - should start with 'sk-ant-'
+          if (!config.anthropicApiKey.startsWith('sk-ant-')) {
+            return {
+              testId: 'anthropic_api_key_configured',
+              status: DiagnosticStatus.WARN,
+              message: 'API key format looks incorrect',
+              details: 'Anthropic API keys should start with "sk-ant-"',
+              duration: Date.now() - startTime
+            };
+          }
+
+          return {
+            testId: 'anthropic_api_key_configured',
+            status: DiagnosticStatus.PASS,
+            message: 'Anthropic API key configured',
+            details: `Key: sk-ant-...${config.anthropicApiKey.slice(-4)}`,
+            duration: Date.now() - startTime
+          };
+        } catch (error) {
+          return {
+            testId: 'anthropic_api_key_configured',
+            status: DiagnosticStatus.FAIL,
+            message: 'Error checking API key configuration',
+            error: error as Error,
+            duration: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Anthropic API Connection Test
+    this.registerTest({
+      id: 'anthropic_api_connection',
+      name: 'Anthropic API Connection',
+      category: 'core',
+      description: 'Test actual connection to Anthropic API',
+      level: DiagnosticLevel.STANDARD,
+      execute: async () => {
+        const startTime = Date.now();
+
+        try {
+          // Check if API key is configured first
+          if (!config.anthropicApiKey || config.anthropicApiKey === 'your_api_key_here') {
+            return {
+              testId: 'anthropic_api_connection',
+              status: DiagnosticStatus.SKIP,
+              message: 'API key not configured',
+              duration: Date.now() - startTime
+            };
+          }
+
+          const client = new Anthropic({ apiKey: config.anthropicApiKey });
+
+          // Make a minimal API call to test connectivity
+          const response = await client.messages.create({
+            model: 'claude-haiku-4-20250514',
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Hi' }]
+          });
+
+          if (!response || !response.content || response.content.length === 0) {
+            return {
+              testId: 'anthropic_api_connection',
+              status: DiagnosticStatus.FAIL,
+              message: 'API returned unexpected response',
+              duration: Date.now() - startTime
+            };
+          }
+
+          return {
+            testId: 'anthropic_api_connection',
+            status: DiagnosticStatus.PASS,
+            message: 'API connection successful',
+            details: `Response received in ${Date.now() - startTime}ms`,
+            duration: Date.now() - startTime
+          };
+        } catch (error) {
+          const err = error as Error;
+
+          // Provide specific error messages
+          let message = 'API connection failed';
+          let details = err.message;
+
+          if (err.message.includes('401') || err.message.includes('authentication')) {
+            message = 'API authentication failed';
+            details = 'API key is invalid or expired';
+          } else if (err.message.includes('429') || err.message.includes('rate limit')) {
+            message = 'API rate limit exceeded';
+            details = 'Too many requests - try again later';
+          } else if (err.message.includes('timeout') || err.message.includes('ETIMEDOUT')) {
+            message = 'API connection timeout';
+            details = 'Network connectivity issues or API is slow';
+          } else if (err.message.includes('ENOTFOUND') || err.message.includes('network')) {
+            message = 'Network error';
+            details = 'Cannot reach Anthropic API - check internet connection';
+          }
+
+          return {
+            testId: 'anthropic_api_connection',
+            status: DiagnosticStatus.FAIL,
+            message,
+            details,
+            error: err,
+            duration: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Anthropic Model Availability Test
+    this.registerTest({
+      id: 'anthropic_models_available',
+      name: 'Anthropic Models Available',
+      category: 'core',
+      description: 'Verify required Claude models are accessible',
+      level: DiagnosticLevel.STANDARD,
+      execute: async () => {
+        const startTime = Date.now();
+
+        try {
+          // Check if API key is configured first
+          if (!config.anthropicApiKey || config.anthropicApiKey === 'your_api_key_here') {
+            return {
+              testId: 'anthropic_models_available',
+              status: DiagnosticStatus.SKIP,
+              message: 'API key not configured',
+              duration: Date.now() - startTime
+            };
+          }
+
+          const client = new Anthropic({ apiKey: config.anthropicApiKey });
+
+          // Test the models we actually use
+          const modelsToTest = [
+            { name: 'Claude Sonnet 4', id: 'claude-sonnet-4-20250514' },
+            { name: 'Claude Haiku 4.5', id: 'claude-haiku-4-5-20251001' }
+          ];
+
+          const results: string[] = [];
+          let allAvailable = true;
+
+          for (const model of modelsToTest) {
+            try {
+              // Quick test with minimal tokens
+              await client.messages.create({
+                model: model.id,
+                max_tokens: 5,
+                messages: [{ role: 'user', content: 'Test' }]
+              });
+
+              results.push(`✓ ${model.name}`);
+            } catch (error) {
+              allAvailable = false;
+              const err = error as Error;
+
+              if (err.message.includes('404') || err.message.includes('not_found')) {
+                results.push(`✗ ${model.name} (model not found)`);
+              } else {
+                results.push(`✗ ${model.name} (${err.message.slice(0, 50)})`);
+              }
+            }
+          }
+
+          if (!allAvailable) {
+            return {
+              testId: 'anthropic_models_available',
+              status: DiagnosticStatus.WARN,
+              message: 'Some models unavailable',
+              details: results.join('\n'),
+              duration: Date.now() - startTime
+            };
+          }
+
+          return {
+            testId: 'anthropic_models_available',
+            status: DiagnosticStatus.PASS,
+            message: 'All required models available',
+            details: results.join('\n'),
+            duration: Date.now() - startTime
+          };
+        } catch (error) {
+          return {
+            testId: 'anthropic_models_available',
+            status: DiagnosticStatus.FAIL,
+            message: 'Error testing model availability',
             error: error as Error,
             duration: Date.now() - startTime
           };
