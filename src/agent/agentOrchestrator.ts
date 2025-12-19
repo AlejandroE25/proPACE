@@ -16,7 +16,7 @@ import { ConcurrentRequestManager } from './concurrentRequestManager';
 import { SystemIntrospector } from './systemIntrospector';
 import { ErrorRecoveryManager } from './errorRecoveryManager';
 import { HealthMonitor } from './healthMonitor';
-import { SystemDiagnostics } from './diagnostics';
+import { SystemDiagnostics, DiagnosticLevel, DiagnosticStatus } from './diagnostics';
 import {
   PlanningContext,
   AuditEventType,
@@ -81,10 +81,90 @@ export class AgentOrchestrator {
     // Setup event handlers
     this.setupEventHandlers();
 
+    // Run immediate startup diagnostics to catch critical issues
+    this.runStartupDiagnostics();
+
     // Start health monitoring
     this.healthMonitor.start();
 
     logger.info('Agent orchestrator initialized with health monitoring');
+  }
+
+  /**
+   * Run startup diagnostics to catch critical issues immediately
+   */
+  private runStartupDiagnostics(): void {
+    // Run diagnostics asynchronously, don't block initialization
+    (async () => {
+      try {
+        logger.info('Running startup diagnostics...');
+
+        // Run QUICK diagnostics to check critical components
+        const report = await this.diagnostics.runDiagnostics(DiagnosticLevel.QUICK);
+
+        // Check for any failures
+        const failures = report.results.filter(r => r.status === DiagnosticStatus.FAIL);
+
+        if (failures.length > 0) {
+          logger.error('STARTUP DIAGNOSTIC FAILURES DETECTED:', {
+            failureCount: failures.length,
+            failures: failures.map(f => ({
+              test: f.testId,
+              message: f.message,
+              details: f.details
+            }))
+          });
+
+          // Log each failure clearly
+          for (const failure of failures) {
+            logger.error(`[STARTUP] ${failure.testId}: ${failure.message}`, {
+              details: failure.details,
+              error: failure.error?.message
+            });
+          }
+
+          // Create alerts for critical failures
+          for (const failure of failures) {
+            const component = this.mapTestIdToComponent(failure.testId);
+            await this.recoveryManager.recordFailure(
+              component,
+              failure.error || new Error(failure.message),
+              {
+                testId: failure.testId,
+                details: failure.details,
+                startup: true
+              }
+            );
+          }
+        } else {
+          logger.info('Startup diagnostics passed', {
+            passed: report.summary.passed,
+            warnings: report.summary.warnings
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to run startup diagnostics', { error });
+      }
+    })();
+  }
+
+  /**
+   * Map test ID to component (same logic as HealthMonitor)
+   */
+  private mapTestIdToComponent(testId: string): string {
+    const mapping: Record<string, string> = {
+      'plugin_registry_loaded': 'plugin_registry',
+      'anthropic_api_key_configured': 'anthropic_api',
+      'anthropic_api_connection': 'anthropic_api',
+      'anthropic_models_available': 'anthropic_models',
+      'weather_tool_available': 'weather_tool',
+      'news_tool_available': 'news_tool',
+      'memory_tools_available': 'memory_tools',
+      'wolfram_tool_available': 'wolfram_tool',
+      'tool_parameters_valid': 'tool_validation'
+    };
+
+    return mapping[testId] || testId;
   }
 
   /**
