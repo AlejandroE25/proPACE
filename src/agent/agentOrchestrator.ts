@@ -17,6 +17,7 @@ import { SystemIntrospector } from './systemIntrospector';
 import { ErrorRecoveryManager } from './errorRecoveryManager';
 import { HealthMonitor } from './healthMonitor';
 import { SystemDiagnostics, DiagnosticLevel, DiagnosticStatus } from './diagnostics';
+import { GlobalContextStore } from './globalContextStore';
 import {
   PlanningContext,
   AuditEventType,
@@ -35,6 +36,7 @@ export class AgentOrchestrator {
   private recoveryManager: ErrorRecoveryManager;
   private healthMonitor: HealthMonitor;
   private diagnostics: SystemDiagnostics;
+  private globalContext: GlobalContextStore;
 
   /** Conversation history per client */
   private conversationHistory: Map<
@@ -69,6 +71,9 @@ export class AgentOrchestrator {
         enableDegradedMode: true
       }
     );
+
+    // Initialize global context
+    this.globalContext = new GlobalContextStore();
 
     this.planner = new AgentPlanner(anthropicApiKey, pluginRegistry, planningModel);
     this.executor = new AgentExecutor(
@@ -460,6 +465,13 @@ export class AgentOrchestrator {
   }
 
   /**
+   * Get global context store (for WebSocket integration)
+   */
+  getGlobalContext(): GlobalContextStore {
+    return this.globalContext;
+  }
+
+  /**
    * Handle meta-queries about system capabilities
    */
   private handleMetaQuery(metaQueryType: MetaQueryType, originalQuery: string): string {
@@ -581,6 +593,9 @@ export class AgentOrchestrator {
   async shutdown(): Promise<void> {
     // Stop health monitoring
     this.healthMonitor.stop();
+
+    // Shutdown global context
+    this.globalContext.shutdown();
 
     // Close audit logger
     this.auditLogger.close();

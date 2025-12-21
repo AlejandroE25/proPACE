@@ -18,6 +18,8 @@ export class PACEWebSocketServer {
   private isServerRunning: boolean = false;
   private options: WebSocketServerOptions;
   private onMessageHandler?: (clientId: string, message: string) => Promise<string>;
+  private onClientConnectedHandler?: (clientId: string) => void;
+  private onClientDisconnectedHandler?: (clientId: string) => void;
 
   constructor(options: WebSocketServerOptions) {
     this.options = options;
@@ -28,6 +30,20 @@ export class PACEWebSocketServer {
    */
   setMessageHandler(handler: (clientId: string, message: string) => Promise<string>): void {
     this.onMessageHandler = handler;
+  }
+
+  /**
+   * Set client connected handler
+   */
+  setClientConnectedHandler(handler: (clientId: string) => void): void {
+    this.onClientConnectedHandler = handler;
+  }
+
+  /**
+   * Set client disconnected handler
+   */
+  setClientDisconnectedHandler(handler: (clientId: string) => void): void {
+    this.onClientDisconnectedHandler = handler;
   }
 
   /**
@@ -67,6 +83,11 @@ export class PACEWebSocketServer {
 
     this.clients.set(clientId, ws);
     logger.info(`New client connected: ${clientId}`);
+
+    // Notify handler
+    if (this.onClientConnectedHandler) {
+      this.onClientConnectedHandler(clientId);
+    }
 
     // Send welcome message
     const welcomeMessage = ' $$ Hello! I am PACE, your personal assistant.';
@@ -152,6 +173,11 @@ export class PACEWebSocketServer {
   private handleClientDisconnect(clientId: string): void {
     this.clients.delete(clientId);
     logger.info(`Client disconnected: ${clientId}`);
+
+    // Notify handler
+    if (this.onClientDisconnectedHandler) {
+      this.onClientDisconnectedHandler(clientId);
+    }
   }
 
   /**

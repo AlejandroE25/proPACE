@@ -16,6 +16,7 @@ import { WolframPlugin } from '../plugins/core/wolframPlugin.js';
 import { MemoryPlugin } from '../plugins/core/memoryPlugin.js';
 import { DiagnosticPlugin } from '../plugins/core/diagnosticPlugin.js';
 import { RecoveryPlugin } from '../plugins/core/recoveryPlugin.js';
+import { GlobalContextPlugin } from '../plugins/core/globalContextPlugin.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
 
 /**
@@ -53,6 +54,17 @@ class PACEServer {
 
     // Set up message handler
     this.wsServer.setMessageHandler(this.handleMessage.bind(this));
+
+    // Set up client connection handlers (for global context)
+    if (config.enableAgentMode && this.agentOrchestrator) {
+      this.wsServer.setClientConnectedHandler((clientId) => {
+        this.agentOrchestrator?.getGlobalContext().registerClient(clientId);
+      });
+
+      this.wsServer.setClientDisconnectedHandler((clientId) => {
+        this.agentOrchestrator?.getGlobalContext().unregisterClient(clientId);
+      });
+    }
   }
 
   /**
@@ -71,6 +83,7 @@ class PACEServer {
     const memoryPlugin = new MemoryPlugin();
     const diagnosticPlugin = new DiagnosticPlugin();
     const recoveryPlugin = new RecoveryPlugin();
+    const globalContextPlugin = new GlobalContextPlugin();
 
     await this.pluginRegistry.register(weatherPlugin);
     await this.pluginRegistry.register(newsPlugin);
@@ -78,6 +91,7 @@ class PACEServer {
     await this.pluginRegistry.register(memoryPlugin);
     await this.pluginRegistry.register(diagnosticPlugin);
     await this.pluginRegistry.register(recoveryPlugin);
+    await this.pluginRegistry.register(globalContextPlugin);
 
     // Give diagnostic plugin access to the registry (needed for SystemDiagnostics)
     diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
@@ -96,6 +110,11 @@ class PACEServer {
     recoveryPlugin.setRecoverySystem(
       this.agentOrchestrator.getRecoveryManager(),
       this.agentOrchestrator.getHealthMonitor()
+    );
+
+    // Give global context plugin access to context store
+    globalContextPlugin.setContextStore(
+      this.agentOrchestrator.getGlobalContext()
     );
 
     // Wire up event handlers for background task completion
