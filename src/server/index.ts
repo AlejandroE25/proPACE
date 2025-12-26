@@ -1,6 +1,8 @@
 import { PACEWebSocketServer } from './websocket.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { EventBus } from '../events/eventBus.js';
+import { EventStore } from '../events/eventStore.js';
 import { ClaudeClient } from '../clients/claudeClient.js';
 import { MemoryStore } from '../services/memoryStore.js';
 import { WeatherService } from '../services/weatherService.js';
@@ -17,13 +19,16 @@ import { MemoryPlugin } from '../plugins/core/memoryPlugin.js';
 import { DiagnosticPlugin } from '../plugins/core/diagnosticPlugin.js';
 import { RecoveryPlugin } from '../plugins/core/recoveryPlugin.js';
 import { GlobalContextPlugin } from '../plugins/core/globalContextPlugin.js';
+import { VoiceInterfacePlugin } from '../plugins/interfaces/voiceInterfacePlugin.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
+import { EventType, EventPriority } from '../events/types.js';
 
 /**
  * Main PACE Server Entry Point
  */
 class PACEServer {
   private wsServer: PACEWebSocketServer;
+  private eventBus: EventBus;
   private claudeClient?: ClaudeClient;
   private memoryStore?: MemoryStore;
   private weatherService?: WeatherService;
@@ -34,9 +39,14 @@ class PACEServer {
   private legacyOrchestrator?: ConversationOrchestrator;
   private agentOrchestrator?: AgentOrchestrator;
   private pluginRegistry?: PluginRegistry;
+  private voicePlugin?: VoiceInterfacePlugin;
 
   constructor() {
     logger.info(`Initializing PACE server in ${config.enableAgentMode ? 'AGENT' : 'LEGACY'} mode`);
+
+    // Initialize EventBus for voice plugin and other event-driven features
+    const eventStore = new EventStore(':memory:');
+    this.eventBus = new EventBus(eventStore);
 
     if (config.enableAgentMode) {
       // Agent mode - use plugin system
@@ -84,6 +94,7 @@ class PACEServer {
     const diagnosticPlugin = new DiagnosticPlugin();
     const recoveryPlugin = new RecoveryPlugin();
     const globalContextPlugin = new GlobalContextPlugin();
+    this.voicePlugin = new VoiceInterfacePlugin();
 
     await this.pluginRegistry.register(weatherPlugin);
     await this.pluginRegistry.register(newsPlugin);
@@ -92,6 +103,8 @@ class PACEServer {
     await this.pluginRegistry.register(diagnosticPlugin);
     await this.pluginRegistry.register(recoveryPlugin);
     await this.pluginRegistry.register(globalContextPlugin);
+    // VoiceInterfacePlugin extends BasePlugin (old plugin system) but is compatible with new registry
+    await this.pluginRegistry.register(this.voicePlugin as any);
 
     // Give diagnostic plugin access to the registry (needed for SystemDiagnostics)
     diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
@@ -123,6 +136,7 @@ class PACEServer {
     logger.info('Agent mode initialized successfully');
   }
 
+
   /**
    * Setup event handlers for agent system
    */
@@ -134,6 +148,19 @@ class PACEServer {
     // Task completed - send final answer to client
     executor.on('task_completed', ({ taskId, clientId, result }) => {
       logger.info(`Task ${taskId} completed, sending result to client ${clientId}`);
+
+      // Publish RESPONSE_GENERATED event for TTS
+      logger.info(`Publishing RESPONSE_GENERATED event for TTS`, { clientId, responseLength: result.finalAnswer?.length });
+      this.eventBus.publish({
+        type: EventType.RESPONSE_GENERATED,
+        priority: EventPriority.MEDIUM,
+        source: 'agent-orchestrator',
+        payload: {
+          clientId,
+          response: result.finalAnswer,
+          taskId
+        }
+      });
 
       // Broadcast the final answer
       const message = `Task Complete$$${result.finalAnswer}`;
@@ -179,7 +206,8 @@ class PACEServer {
       this.newsService,
       this.wolframService,
       this.routingService,
-      this.routingPredictor
+      this.routingPredictor,
+      this.eventBus
     );
 
     logger.info('Legacy mode initialized successfully');

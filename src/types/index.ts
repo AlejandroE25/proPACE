@@ -149,6 +149,15 @@ export interface PACEConfig {
   pluginDirectory: string;
   enablePluginHotReload: boolean;
   pluginTimeout: number;
+
+  // Voice Interface
+  enableVoice?: boolean;
+  voiceTTSVoice?: string;
+  voiceSTTLanguage?: string;
+  voiceTTSCacheSize?: number;
+  voiceTTSCacheTTL?: number;
+  voiceSTTChunkDuration?: number;
+  voiceICEServers?: string; // JSON string of ICE servers array
 }
 
 /**

@@ -19,6 +19,7 @@ import path from 'path';
 
 export class EventStore {
   private db: Database.Database;
+  // @ts-ignore - Stored for future use (backup, migration, etc.)
   private dbPath: string;
 
   constructor(dbPath: string = './data/events.db') {
@@ -29,8 +30,8 @@ export class EventStore {
     if (!fs.existsSync(dir)) {
       try {
         fs.mkdirSync(dir, { recursive: true });
-      } catch (error) {
-        logger.error('Failed to create events database directory', { error, dir });
+      } catch (err) {
+        logger.error('Failed to create events database directory', { error: err, dir });
         throw new Error(`Cannot create database directory: ${dir}`);
       }
     }
@@ -40,9 +41,9 @@ export class EventStore {
       this.initializeSchema();
 
       logger.info('EventStore initialized', { dbPath });
-    } catch (error) {
-      logger.error('Failed to initialize EventStore', { error, dbPath });
-      throw error;
+    } catch (err) {
+      logger.error('Failed to initialize EventStore', { error: err, dbPath });
+      throw err;
     }
   }
 
@@ -113,9 +114,9 @@ export class EventStore {
       logger.debug('Event stored', { id: event.id, type: event.type });
 
       return true;
-    } catch (error) {
-      logger.error('Error storing event', { error, event });
-      throw error;
+    } catch (err) {
+      logger.error('Error storing event', { error: err, event });
+      throw err;
     }
   }
 
@@ -194,9 +195,9 @@ export class EventStore {
       });
 
       return events;
-    } catch (error) {
-      logger.error('Error querying events', { error, filters });
-      throw error;
+    } catch (err) {
+      logger.error('Error querying events', { error: err, filters });
+      throw err;
     }
   }
 
@@ -214,9 +215,9 @@ export class EventStore {
       });
 
       return result.changes;
-    } catch (error) {
-      logger.error('Error deleting old events', { error, date });
-      throw error;
+    } catch (err) {
+      logger.error('Error deleting old events', { error: err, date });
+      throw err;
     }
   }
 
@@ -231,9 +232,9 @@ export class EventStore {
       logger.warn('All events cleared', { count: result.changes });
 
       return result.changes;
-    } catch (error) {
-      logger.error('Error clearing events', { error });
-      throw error;
+    } catch (err) {
+      logger.error('Error clearing events', { error: err });
+      throw err;
     }
   }
 
@@ -302,9 +303,9 @@ export class EventStore {
         oldestEvent,
         newestEvent
       };
-    } catch (error) {
-      logger.error('Error getting statistics', { error });
-      throw error;
+    } catch (err) {
+      logger.error('Error getting statistics', { error: err });
+      throw err;
     }
   }
 
@@ -315,9 +316,9 @@ export class EventStore {
     try {
       this.db.close();
       logger.info('EventStore closed');
-    } catch (error) {
-      logger.error('Error closing EventStore', { error });
-      throw error;
+    } catch (err) {
+      logger.error('Error closing EventStore', { error: err });
+      throw err;
     }
   }
 }

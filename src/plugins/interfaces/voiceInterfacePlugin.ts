@@ -1,0 +1,289 @@
+/**
+ * Voice Interface Plugin
+ *
+ * Provides speech-to-text (STT), text-to-speech (TTS), and dynamic personality
+ * management for voice interactions with proPACE.
+ *
+ * Architecture:
+ * - Subscribes to RESPONSE_GENERATED events to trigger TTS
+ * - Subscribes to USER_MESSAGE events for interruption detection
+ * - Publishes TTS_STARTED, TTS_CHUNK, TTS_COMPLETED, TTS_INTERRUPTED events
+ * - Publishes USER_SPEECH events from STT transcription
+ * - Publishes PERSONALITY_CHANGED events based on conversation context
+ */
+
+import { BasePlugin } from '../basePlugin';
+import { PluginMetadata, PluginCapability, PluginConfig } from '../types';
+import { EventBus } from '../../events/eventBus';
+import { DataPipeline } from '../../data/dataPipeline';
+import { EventType, Event } from '../../events/types';
+import { TTSService } from './services/ttsService';
+import { randomUUID } from 'crypto';
+// import { STTService } from './services/sttService'; // TODO: Re-enable for STT
+// import { PersonalityManager } from './services/personalityManager'; // TODO
+// import { InterruptionManager } from './services/interruptionManager'; // TODO
+import { TTSCache } from './utils/ttsCache';
+
+/**
+ * Voice plugin configuration
+ */
+export interface VoiceConfig {
+  ttsVoice: string;        // OpenAI TTS voice (e.g., 'onyx')
+  sttLanguage: string;     // STT language code (e.g., 'en')
+  personalityEnabled: boolean;  // Enable dynamic personality switching
+}
+
+/**
+ * Client voice session tracking
+ */
+interface ClientVoiceSession {
+  clientId: string;
+  responseId?: string;      // Current active response ID
+  isPlaying: boolean;       // Whether audio is currently playing
+  lastActivity: Date;       // Last activity timestamp
+}
+
+/**
+ * Voice Interface Plugin
+ */
+export class VoiceInterfacePlugin extends BasePlugin {
+  // Tools exposed to the agent (empty for interface plugins - they work via events)
+  tools: import('../../types/plugin').PluginTool[] = [];
+
+  private activeClients: Map<string, ClientVoiceSession>;
+
+  // Internal services
+  private ttsService?: TTSService;
+  // private sttService?: STTService; // TODO: Re-enable for STT functionality
+  // private personalityManager?: PersonalityManager; // TODO: Implement personality switching
+  // private interruptionManager?: InterruptionManager; // TODO: Implement interruption handling
+  private ttsCache?: TTSCache;
+
+  constructor() {
+    const metadata: PluginMetadata & { tags?: string[] } = {
+      id: 'voice-interface',
+      name: 'Voice Interface',
+      version: '1.0.0',
+      description: 'Speech-to-text, text-to-speech, and personality management',
+      author: 'proPACE',
+      capability: PluginCapability.INTERFACE,
+      tags: ['voice', 'interface', 'tts', 'stt', 'webrtc']
+    };
+
+    super(metadata as PluginMetadata);
+
+    this.activeClients = new Map();
+  }
+
+  /**
+   * Initialize the plugin with dependencies
+   */
+  async initialize(eventBus: EventBus, dataPipeline: DataPipeline, config: PluginConfig): Promise<void> {
+    await super.initialize(eventBus, dataPipeline, config);
+
+    // Safely access settings
+    const settings = config?.settings || {};
+    const apiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('OpenAI API key required for voice interface');
+    }
+
+    // Initialize TTS cache
+    this.ttsCache = new TTSCache({
+      maxEntries: settings.ttsCacheSize || 100,
+      ttlMs: settings.ttsCacheTTL || 3600000 // 1 hour default
+    });
+
+    // Initialize TTS service
+    this.ttsService = new TTSService({
+      apiKey,
+      voice: settings.ttsVoice || 'onyx',
+      model: settings.ttsModel || 'tts-1',
+      eventBus
+    });
+
+    // TODO: Initialize STT service for speech-to-text functionality
+    // this.sttService = new STTService({
+    //   apiKey,
+    //   language: settings.sttLanguage || 'en',
+    //   eventBus
+    // });
+
+    // TODO: Initialize personality manager
+    // this.personalityManager = new PersonalityManager(
+    //   settings.personalityEnabled !== false // Enabled by default
+    // );
+
+    // TODO: Initialize interruption manager
+    // this.interruptionManager = new InterruptionManager();
+
+    // Warmup TTS cache with common phrases (optional)
+    if (settings.warmupCache !== false) {
+      await this.warmupTTSCache();
+    }
+  }
+
+  /**
+   * Called when plugin starts
+   */
+  protected async onStart(): Promise<void> {
+    // Subscribe to events
+    this.subscribeToEvents();
+  }
+
+  /**
+   * Called when plugin stops
+   */
+  protected async onStop(): Promise<void> {
+    // Cleanup active sessions
+    this.activeClients.clear();
+
+    // Unsubscribe from events (EventBus handles this automatically on plugin stop)
+  }
+
+  /**
+   * Subscribe to EventBus events
+   */
+  private subscribeToEvents(): void {
+    if (!this['_eventBus']) {
+      throw new Error('EventBus not initialized');
+    }
+
+    const eventBus = this['_eventBus'] as EventBus;
+
+    // Subscribe to RESPONSE_GENERATED events for TTS generation
+    eventBus.subscribe([EventType.RESPONSE_GENERATED], {
+      id: `${this.metadata.id}-response-handler`,
+      handle: this.handleResponseGenerated.bind(this),
+      canHandle: () => true,
+      priority: 1
+    });
+
+    // Subscribe to USER_MESSAGE events for interruption detection
+    eventBus.subscribe([EventType.USER_MESSAGE], {
+      id: `${this.metadata.id}-interruption-handler`,
+      handle: this.handleUserMessage.bind(this),
+      canHandle: () => true,
+      priority: 1
+    });
+  }
+
+  /**
+   * Handle RESPONSE_GENERATED event - trigger TTS
+   */
+  private async handleResponseGenerated(event: Event): Promise<void> {
+    try {
+      const { clientId, response } = event.payload;
+
+      if (!clientId || !response) {
+        return; // Invalid payload
+      }
+
+      // Track client session
+      let session = this.activeClients.get(clientId);
+      if (!session) {
+        session = {
+          clientId,
+          isPlaying: false,
+          lastActivity: new Date()
+        };
+        this.activeClients.set(clientId, session);
+      }
+
+      // Update session
+      session.lastActivity = new Date();
+
+      // Generate TTS and publish TTS events
+      const responseId = randomUUID();
+      session.responseId = responseId;
+      session.isPlaying = true;
+
+      // Generate TTS audio (this will emit TTS_CHUNK events)
+      if (this.ttsService) {
+        await this.ttsService.generate(response, responseId);
+      }
+
+    } catch (error) {
+      this.recordError(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Handle USER_MESSAGE event - detect interruptions
+   */
+  private async handleUserMessage(event: Event): Promise<void> {
+    try {
+      const { clientId } = event.payload;
+
+      if (!clientId) {
+        return; // Invalid payload
+      }
+
+      const session = this.activeClients.get(clientId);
+      if (session && session.isPlaying && session.responseId) {
+        // User is interrupting active TTS
+        // TODO: Abort TTS and publish TTS_INTERRUPTED event
+        // await this.interruptionManager.interrupt(clientId, session.responseId);
+        // await this.publishEvent({
+        //   type: EventType.TTS_INTERRUPTED,
+        //   source: this.metadata.id,
+        //   payload: { clientId, responseId: session.responseId }
+        // });
+
+        session.isPlaying = false;
+        session.responseId = undefined;
+      }
+    } catch (error) {
+      this.recordError(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Warmup TTS cache with common phrases
+   */
+  private async warmupTTSCache(): Promise<void> {
+    if (!this.ttsCache || !this.ttsService) {
+      return;
+    }
+
+    const commonPhrases = [
+      'Hello!',
+      'How can I help you?',
+      'I understand.',
+      'Let me think about that.',
+      'Is there anything else?',
+      'Got it.',
+      'One moment please.'
+    ];
+
+    await this.ttsCache.warmup(commonPhrases, async (text: string) => {
+      await this.ttsService!.generate(text, 'warmup-' + Date.now());
+      // Return empty buffer for warmup (actual audio not needed)
+      return Buffer.alloc(0);
+    });
+  }
+
+
+  /**
+   * Update plugin configuration
+   */
+  async updateConfig(config: Partial<PluginConfig>): Promise<void> {
+    if (config.settings) {
+      this.config.settings = {
+        ...this.config.settings,
+        ...config.settings
+      };
+    }
+
+    await super.updateConfig(config);
+  }
+
+  /**
+   * Poll method (required by MonitoringPlugin interface, but not used for voice)
+   */
+  async poll(): Promise<void> {
+    // Voice plugin doesn't use polling - it's event-driven
+    // This method is here to satisfy the MonitoringPlugin interface
+  }
+}

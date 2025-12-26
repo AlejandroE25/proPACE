@@ -40,6 +40,15 @@ export function loadConfig(): PACEConfig {
     pluginDirectory: process.env.PLUGIN_DIRECTORY || './src/plugins',
     enablePluginHotReload: process.env.ENABLE_PLUGIN_HOT_RELOAD === 'true',
     pluginTimeout: parseInt(process.env.PLUGIN_TIMEOUT || '10000', 10),
+
+    // Voice Interface Configuration
+    enableVoice: process.env.ENABLE_VOICE === 'true',
+    voiceTTSVoice: process.env.VOICE_TTS_VOICE || 'onyx',
+    voiceSTTLanguage: process.env.VOICE_STT_LANGUAGE || 'en',
+    voiceTTSCacheSize: parseInt(process.env.VOICE_TTS_CACHE_SIZE || '100', 10),
+    voiceTTSCacheTTL: parseInt(process.env.VOICE_TTS_CACHE_TTL || '3600000', 10),
+    voiceSTTChunkDuration: parseInt(process.env.VOICE_STT_CHUNK_DURATION || '2000', 10),
+    voiceICEServers: process.env.VOICE_ICE_SERVERS || '[{"urls":"stun:stun.l.google.com:19302"}]',
   };
 
   // Validate required API keys

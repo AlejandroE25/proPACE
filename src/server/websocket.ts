@@ -1,4 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer } from 'http';
+import { readFileSync } from 'fs';
+import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
 import { PACEClient } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -14,12 +17,14 @@ export interface WebSocketServerOptions {
  */
 export class PACEWebSocketServer {
   private wss: WebSocketServer | null = null;
+  private httpServer: any = null;
   private clients: Map<string, PACEClient> = new Map();
   private isServerRunning: boolean = false;
   private options: WebSocketServerOptions;
   private onMessageHandler?: (clientId: string, message: string) => Promise<string>;
   private onClientConnectedHandler?: (clientId: string) => void;
   private onClientDisconnectedHandler?: (clientId: string) => void;
+  private onWebRTCSignalingHandler?: (clientId: string, message: any) => Promise<void>;
 
   constructor(options: WebSocketServerOptions) {
     this.options = options;
@@ -47,29 +52,111 @@ export class PACEWebSocketServer {
   }
 
   /**
-   * Start the WebSocket server
+   * Set WebRTC signaling handler
+   */
+  setWebRTCSignalingHandler(handler: (clientId: string, message: any) => Promise<void>): void {
+    this.onWebRTCSignalingHandler = handler;
+  }
+
+  /**
+   * Start the HTTP + WebSocket server
    */
   async start(): Promise<void> {
     return new Promise((resolve) => {
-      this.wss = new WebSocketServer({
-        host: this.options.host,
-        port: this.options.port,
+      // Create HTTP server for static files
+      this.httpServer = createServer((req, res) => {
+        this.handleHttpRequest(req, res);
       });
+
+      // Create WebSocket server attached to HTTP server
+      this.wss = new WebSocketServer({ server: this.httpServer });
 
       this.wss.on('connection', (ws: WebSocket) => {
         this.handleNewClient(ws as PACEClient);
       });
 
-      this.wss.on('listening', () => {
-        this.isServerRunning = true;
-        logger.info(`WebSocket server started on ${this.options.host}:${this.options.port}`);
-        resolve();
-      });
-
       this.wss.on('error', (error) => {
         logger.error('WebSocket server error:', error);
       });
+
+      // Start HTTP server
+      this.httpServer.listen(this.options.port, this.options.host, () => {
+        this.isServerRunning = true;
+        logger.info(`HTTP + WebSocket server started on ${this.options.host}:${this.options.port}`);
+        resolve();
+      });
+
+      this.httpServer.on('error', (error: any) => {
+        logger.error('HTTP server error:', error);
+      });
     });
+  }
+
+  /**
+   * Handle HTTP requests for static files and API endpoints
+   */
+  private handleHttpRequest(req: any, res: any): void {
+    // Handle API endpoints
+    if (req.url.startsWith('/api/')) {
+      this.handleApiRequest(req, res);
+      return;
+    }
+
+    // Handle static files
+    let filePath = req.url === '/' ? '/index.html' : req.url;
+    filePath = join(process.cwd(), 'public', filePath);
+
+    const mimeTypes: Record<string, string> = {
+      '.html': 'text/html',
+      '.js': 'text/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon'
+    };
+
+    const ext = extname(filePath);
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    try {
+      const content = readFileSync(filePath);
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(content, 'utf-8');
+    } catch (error) {
+      if ((error as any).code === 'ENOENT') {
+        res.writeHead(404);
+        res.end('File not found');
+      } else {
+        res.writeHead(500);
+        res.end(`Server error: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  /**
+   * Handle API requests
+   */
+  private handleApiRequest(req: any, res: any): void {
+    res.setHeader('Content-Type', 'application/json');
+
+    // /api/health endpoint
+    if (req.url === '/api/health') {
+      const health = {
+        healthy: true,
+        timestamp: new Date().toISOString(),
+        clients: this.clients.size
+      };
+      res.writeHead(200);
+      res.end(JSON.stringify(health));
+      return;
+    }
+
+    // Unknown API endpoint
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: 'API endpoint not found' }));
   }
 
   /**
@@ -121,30 +208,74 @@ export class PACEWebSocketServer {
     }
 
     client.lastActivity = new Date();
-    logger.info(`Client ${clientId} sent: ${message}`);
+
+    // Try to parse as JSON
+    try {
+      const parsed = JSON.parse(message);
+
+      // Check if this is a WebRTC signaling message
+      if (parsed.type === 'webrtc-signal' && this.onWebRTCSignalingHandler) {
+        logger.info(`Client ${clientId} sent WebRTC signaling message: ${parsed.signal}`);
+
+        // Handle WebRTC signaling asynchronously
+        const handler = this.onWebRTCSignalingHandler;
+        (async () => {
+          try {
+            await handler(clientId, parsed);
+          } catch (error) {
+            logger.error(`Error handling WebRTC signaling from ${clientId}:`, error);
+          }
+        })();
+        return;
+      }
+
+      // Check if this is a JSON command message
+      if (parsed.type === 'command' && parsed.text) {
+        this.handleCommandMessage(clientId, parsed.text, client);
+        return;
+      }
+
+      // Check for other JSON message types (subscribe, get_health, etc.)
+      if (parsed.type) {
+        logger.info(`Client ${clientId} sent ${parsed.type} message`);
+        // Don't send a response for these message types - they're handled internally
+        return;
+      }
+    } catch (e) {
+      // Not JSON, treat as plain text message
+      this.handleCommandMessage(clientId, message, client);
+      return;
+    }
+  }
+
+  /**
+   * Handle command message (text or JSON)
+   */
+  private handleCommandMessage(clientId: string, text: string, client: PACEClient): void {
+    logger.info(`Client ${clientId} sent: ${text}`);
 
     // Process message asynchronously (non-blocking)
     (async () => {
       try {
         // Send immediate acknowledgment
-        const acknowledgmentMessage = `${message}$$🔍 Processing...`;
+        const acknowledgmentMessage = `${text}$$🔍 Processing...`;
         this.broadcast(acknowledgmentMessage);
 
         // Call the message handler if set
         let response: string;
         if (this.onMessageHandler) {
-          response = await this.onMessageHandler(clientId, message);
+          response = await this.onMessageHandler(clientId, text);
         } else {
           // Default echo response
-          response = `Echo: ${message}`;
+          response = `Echo: ${text}`;
         }
 
         // Broadcast final response to all clients
-        const broadcastMessage = `${message}$$${response}`;
+        const broadcastMessage = `${text}$$${response}`;
         this.broadcast(broadcastMessage);
       } catch (error) {
         logger.error(`Error handling message from ${clientId}:`, error);
-        const errorMessage = `${message}$$Sorry, an error occurred processing your request.`;
+        const errorMessage = `${text}$$Sorry, an error occurred processing your request.`;
         if (client.readyState === WebSocket.OPEN) {
           client.send(errorMessage);
         }
@@ -163,6 +294,21 @@ export class PACEWebSocketServer {
         } catch (error) {
           logger.error(`Error sending to client ${clientId}:`, error);
         }
+      }
+    }
+  }
+
+  /**
+   * Send message to a specific client
+   */
+  sendToClient(clientId: string, message: any): void {
+    const client = this.clients.get(clientId);
+    if (client && client.readyState === WebSocket.OPEN) {
+      try {
+        const payload = typeof message === 'string' ? message : JSON.stringify(message);
+        client.send(payload);
+      } catch (error) {
+        logger.error(`Error sending to client ${clientId}:`, error);
       }
     }
   }

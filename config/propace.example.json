@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "environment": "production",
+  "storage": {
+    "dataPath": "./data/propace.db",
+    "eventPath": "./data/events.db"
+  },
+  "decisionEngine": {
+    "defaultAutonomyLevel": "supervised",
+    "maxRiskLevel": "medium",
+    "approvalTimeoutMs": 300000
+  },
+  "plugins": {
+    "temperature-sensor": {
+      "enabled": false,
+      "pollInterval": 30000,
+      "settings": {
+        "unit": "celsius",
+        "anomalyThreshold": 5
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "example-rule",
+      "name": "Example Rule",
+      "description": "Example decision rule",
+      "conditions": {
+        "eventType": "sensor_trigger"
+      },
+      "action": {
+        "type": "notify_user",
+        "message": "Sensor triggered"
+      },
+      "autonomyLevel": "fully_autonomous",
+      "riskLevel": "low",
+      "priority": 5,
+      "enabled": true
+    }
+  ],
+  "monitoring": {
+    "healthCheckIntervalMs": 30000,
+    "errorThreshold": 100
+  },
+  "api": {
+    "enabled": true,
+    "port": 3000,
+    "host": "0.0.0.0",
+    "cors": {
+      "enabled": true,
+      "origins": [
+        "http://localhost:3001",
+        "https://your-ui-domain.com"
+      ]
+    },
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 60000,
+      "maxRequests": 100
+    }
+  },
+  "logging": {
+    "level": "info",
+    "file": {
+      "enabled": true,
+      "path": "./logs/propace.log",
+      "maxSize": "10m",
+      "maxFiles": 5
+    },
+    "console": {
+      "enabled": true,
+      "colorize": false
+    }
+  },
+  "auth": {
+    "enabled": true,
+    "type": "api-key",
+    "apiKeys": [
+      "your-api-key-here"
+    ]
+  },
+  "dataRetention": {
+    "enabled": true,
+    "sensorDataDays": 90,
+    "eventLogDays": 30,
+    "decisionHistoryDays": 365
+  }
+}

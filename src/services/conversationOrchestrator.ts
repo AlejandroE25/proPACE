@@ -6,6 +6,8 @@ import { WolframService } from './wolframService.js';
 import { RoutingService } from './routingService.js';
 import { RoutingPredictor } from './routingPredictor.js';
 import { ConversationMessage, Memory, SubsystemType } from '../types/index.js';
+import { EventBus } from '../events/eventBus.js';
+import { EventType, EventPriority } from '../events/types.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 
@@ -21,6 +23,7 @@ export class ConversationOrchestrator {
   private wolframService: WolframService;
   private routingService: RoutingService;
   private routingPredictor: RoutingPredictor;
+  private eventBus: EventBus;
   private conversationHistory: Map<string, ConversationMessage[]> = new Map();
 
   constructor(
@@ -30,7 +33,8 @@ export class ConversationOrchestrator {
     newsService: NewsService,
     wolframService: WolframService,
     routingService: RoutingService,
-    routingPredictor: RoutingPredictor
+    routingPredictor: RoutingPredictor,
+    eventBus: EventBus
   ) {
     this.claudeClient = claudeClient;
     this.memoryStore = memoryStore;
@@ -39,6 +43,7 @@ export class ConversationOrchestrator {
     this.wolframService = wolframService;
     this.routingService = routingService;
     this.routingPredictor = routingPredictor;
+    this.eventBus = eventBus;
   }
 
   /**
@@ -107,6 +112,21 @@ export class ConversationOrchestrator {
       logger.info(
         `Processed message in ${totalTime}ms using ${usedSubsystem} (routing: ${routingDecision.cached ? 'cached' : 'Haiku'})`
       );
+
+      // Publish RESPONSE_GENERATED event for voice plugin and other subscribers
+      await this.eventBus.publish({
+        type: EventType.RESPONSE_GENERATED,
+        priority: EventPriority.HIGH,
+        source: 'conversation-orchestrator',
+        payload: {
+          clientId,
+          message,
+          response,
+          subsystem: usedSubsystem,
+          timestamp: new Date(),
+          processingTime: totalTime
+        }
+      });
 
       return response;
     } catch (error) {

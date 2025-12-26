@@ -13,8 +13,7 @@ import {
   Event,
   EventType,
   EventPriority,
-  EventSubscriber,
-  EventQuery
+  EventSubscriber
 } from './types';
 
 interface QueuedEvent {
