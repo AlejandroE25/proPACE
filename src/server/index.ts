@@ -1,6 +1,7 @@
 import { PACEWebSocketServer } from './websocket.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import * as ui from '../utils/terminalUI.js';
 import { EventBus } from '../events/eventBus.js';
 import { EventStore } from '../events/eventStore.js';
 import { ClaudeClient } from '../clients/claudeClient.js';
@@ -42,11 +43,18 @@ class PACEServer {
   private voicePlugin?: VoiceInterfacePlugin;
 
   constructor() {
-    logger.info(`Initializing PACE server in ${config.enableAgentMode ? 'AGENT' : 'LEGACY'} mode`);
+    const mode = config.enableAgentMode ? 'AGENT' : 'LEGACY';
+
+    // Display startup banner
+    ui.displayStartupBanner(mode);
+
+    ui.displayInitStep('Initializing EventBus', 'start');
+    logger.info(`Initializing PACE server in ${mode} mode`);
 
     // Initialize EventBus for voice plugin and other event-driven features
     const eventStore = new EventStore(':memory:');
     this.eventBus = new EventBus(eventStore);
+    ui.displayInitStep('EventBus initialized', 'success');
 
     if (config.enableAgentMode) {
       // Agent mode - use plugin system
@@ -56,6 +64,7 @@ class PACEServer {
       this.initializeLegacyMode();
     }
 
+    ui.displayInitStep('Initializing WebSocket server', 'start');
     // Initialize WebSocket server
     this.wsServer = new PACEWebSocketServer({
       port: config.port,
@@ -69,18 +78,31 @@ class PACEServer {
     if (config.enableAgentMode && this.agentOrchestrator) {
       this.wsServer.setClientConnectedHandler((clientId) => {
         this.agentOrchestrator?.getGlobalContext().registerClient(clientId);
+        ui.displayClientConnected(clientId, this.wsServer.getClientCount());
       });
 
       this.wsServer.setClientDisconnectedHandler((clientId) => {
         this.agentOrchestrator?.getGlobalContext().unregisterClient(clientId);
+        ui.displayClientDisconnected(clientId, this.wsServer.getClientCount());
+      });
+    } else {
+      // Legacy mode still needs connection/disconnection display
+      this.wsServer.setClientConnectedHandler((clientId) => {
+        ui.displayClientConnected(clientId, this.wsServer.getClientCount());
+      });
+
+      this.wsServer.setClientDisconnectedHandler((clientId) => {
+        ui.displayClientDisconnected(clientId, this.wsServer.getClientCount());
       });
     }
+    ui.displayInitStep('WebSocket server initialized', 'success');
   }
 
   /**
    * Initialize agent mode with plugin system
    */
   private async initializeAgentMode(): Promise<void> {
+    ui.displayInitStep('Initializing agent mode', 'start');
     logger.info('Initializing agent mode...');
 
     // Create plugin registry
@@ -110,6 +132,7 @@ class PACEServer {
     diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
 
     logger.info(`Registered ${this.pluginRegistry.getPluginCount()} core plugins`);
+    ui.displayPluginStatus(this.pluginRegistry.getPluginCount());
 
     // Create agent orchestrator
     this.agentOrchestrator = new AgentOrchestrator(
@@ -134,6 +157,7 @@ class PACEServer {
     this.setupAgentEventHandlers();
 
     logger.info('Agent mode initialized successfully');
+    ui.displayInitStep('Agent mode initialized', 'success');
   }
 
 
@@ -148,6 +172,7 @@ class PACEServer {
     // Task completed - send final answer to client
     executor.on('task_completed', ({ taskId, clientId, result }) => {
       logger.info(`Task ${taskId} completed, sending result to client ${clientId}`);
+      ui.displayTaskStatus(taskId, 'completed');
 
       // Publish RESPONSE_GENERATED event for TTS
       logger.info(`Publishing RESPONSE_GENERATED event for TTS`, { clientId, responseLength: result.finalAnswer?.length });
@@ -165,11 +190,13 @@ class PACEServer {
       // Broadcast the final answer
       const message = `Task Complete$$${result.finalAnswer}`;
       this.wsServer.broadcast(message);
+      ui.displayOutgoingResponse(clientId, result.finalAnswer);
     });
 
     // Task failed - send error to client
     executor.on('task_failed', ({ taskId, clientId, error }) => {
       logger.error(`Task ${taskId} failed for client ${clientId}: ${error}`);
+      ui.displayTaskStatus(taskId, 'failed');
 
       // Broadcast the error
       const message = `Task Failed$$I encountered an error: ${error}`;
@@ -189,6 +216,7 @@ class PACEServer {
    * Initialize legacy mode with existing services
    */
   private initializeLegacyMode(): void {
+    ui.displayInitStep('Initializing legacy mode', 'start');
     logger.info('Initializing legacy mode...');
 
     // Initialize AI and memory systems
@@ -211,12 +239,14 @@ class PACEServer {
     );
 
     logger.info('Legacy mode initialized successfully');
+    ui.displayInitStep('Legacy mode initialized', 'success');
   }
 
   /**
    * Handle incoming messages from clients
    */
   private async handleMessage(clientId: string, message: string): Promise<string> {
+    ui.displayIncomingMessage(clientId, message);
     logger.info(`Processing message from ${clientId}: ${message}`);
 
     try {
@@ -225,7 +255,9 @@ class PACEServer {
         if (!this.agentOrchestrator) {
           throw new Error('Agent orchestrator not initialized');
         }
-        return await this.agentOrchestrator.processMessage(clientId, message);
+        const response = await this.agentOrchestrator.processMessage(clientId, message);
+        ui.displayOutgoingResponse(clientId, response);
+        return response;
       } else {
         // Legacy mode
         if (!this.legacyOrchestrator) {
@@ -235,14 +267,18 @@ class PACEServer {
         // Check for special commands first
         const commandResponse = await this.legacyOrchestrator.handleCommand(clientId, message);
         if (commandResponse) {
+          ui.displayOutgoingResponse(clientId, commandResponse);
           return commandResponse;
         }
 
         // Process message through orchestrator
-        return await this.legacyOrchestrator.processMessage(clientId, message);
+        const response = await this.legacyOrchestrator.processMessage(clientId, message);
+        ui.displayOutgoingResponse(clientId, response);
+        return response;
       }
     } catch (error) {
       logger.error('Error handling message:', error);
+      ui.displayError('Error handling message', error);
       return 'Sorry, I encountered an error. Please try again.';
     }
   }
@@ -252,17 +288,29 @@ class PACEServer {
    */
   async start(): Promise<void> {
     try {
+      ui.displayServerConfig({
+        environment: config.nodeEnv,
+        host: config.host,
+        port: config.port,
+        logLevel: config.logLevel
+      });
+
       logger.info('Starting PACE server...');
       logger.info(`Environment: ${config.nodeEnv}`);
       logger.info(`Port: ${config.port}`);
       logger.info(`Host: ${config.host}`);
 
+      ui.displayInitStep('Starting WebSocket server', 'start');
       await this.wsServer.start();
+      ui.displayInitStep('WebSocket server started', 'success');
 
       logger.info('✓ PACE server started successfully');
       logger.info(`WebSocket server listening on ws://${config.host}:${config.port}`);
+
+      ui.displayServerStarted(`ws://${config.host}:${config.port}`);
     } catch (error) {
       logger.error('Failed to start PACE server:', error);
+      ui.displayError('Failed to start PACE server', error);
       throw error;
     }
   }
@@ -271,6 +319,7 @@ class PACEServer {
    * Stop the server
    */
   async stop(): Promise<void> {
+    ui.displayShutdown();
     logger.info('Stopping PACE server...');
     await this.wsServer.stop();
 
