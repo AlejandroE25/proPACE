@@ -115,4 +115,4 @@ Write-Host "`nYour proPACE server is ready to run." -ForegroundColor Green
 Write-Host "`nNext steps:" -ForegroundColor Yellow
 Write-Host "  1. Ensure .env file exists with your API keys" -ForegroundColor White
 Write-Host "  2. Start the server: npm start" -ForegroundColor White
-Write-Host "  3. Or install as service: .\scripts\install-service-windows.ps1" -ForegroundColor White
+Write-Host "  3. Or install as service: .\scripts\install-service-windows.ps1`n" -ForegroundColor White
