@@ -30,6 +30,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Run with: `npm run dev:cli` (dev) or `npm run cli` (production)
   - Legacy CLI available as: `npm run cli:legacy`
   - Documentation: `docs/CLI-BLESSED.md`
+- TODO list for planned features and improvements
+  - API endpoints for server information (high priority for tomorrow)
+  - CLI enhancements (command history, autocomplete, themes)
+  - Dashboard improvements (graphs, metrics, charts)
+  - File: `docs/TODO.md`
+
+### Changed
+- CLI improvements based on user feedback
+  - Restored original ASCII art logo ("proPACE" banner)
+  - Fixed message parsing to strip server prefixes (Task Complete$$, Task Failed$$, etc.)
+  - Added typewriter effect for long PACE responses (>200 chars) for better readability
+  - Improved news parsing to filter headers and numbered list prefixes
+  - Enhanced info panel with connection status, time, date, and version
+  - Better weather detection using temperature and "feels like" keywords
+  - File: `src/cli/index-blessed.ts`
 
 ### Fixed
 - Fixed Windows compatibility issue where server would exit immediately on startup

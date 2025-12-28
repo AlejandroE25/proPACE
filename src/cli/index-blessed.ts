@@ -33,6 +33,7 @@ class PACETerminalBlessed {
   private messages: Message[] = [];
   private connected = false;
   private reconnecting = false;
+  private isTyping = false;
 
   private weatherData: string = 'Loading...';
   private newsData: string[] = ['Loading news...'];
@@ -65,41 +66,60 @@ class PACETerminalBlessed {
   }
 
   private createLayout() {
-    // Top bar with branding and time
-    const topBar = blessed.box({
+    // ASCII Art Logo Header
+    const logo = blessed.box({
       top: 0,
       left: 0,
-      width: '100%',
-      height: 3,
-      content: '{center}{bold}🤖 proPACE Terminal{/bold}{/center}',
+      width: '70%',
+      height: 7,
+      content:
+`                      ____  ___   ____________
+    ____  _________  / __ \\/   | / ____/ ____/
+   / __ \\/ ___/ __ \\/ /_/ / /| |/ /   / __/
+  / /_/ / /  / /_/ / ____/ ___ / /___/ /___
+ / .___/_/   \\____/_/   /_/  |_\\____/_____/
+/_/                                           `,
       tags: true,
       style: {
-        fg: 'white',
-        bg: 'blue',
+        fg: 'cyan',
         bold: true
       }
     });
 
-    this.timeDisplay = blessed.text({
+    // Info box (top right)
+    const topBar = blessed.box({
       top: 0,
-      right: 2,
-      width: 'shrink',
-      height: 1,
-      content: '',
+      left: '70%',
+      width: '30%',
+      height: 7,
+      border: { type: 'line' },
       tags: true,
       style: {
-        fg: 'white',
-        bg: 'blue'
+        border: { fg: 'cyan' },
+        fg: 'white'
+      }
+    });
+
+    this.timeDisplay = blessed.text({
+      top: 1,
+      left: '71%',
+      width: '28%',
+      height: 5,
+      content: '',
+      tags: true,
+      align: 'center',
+      style: {
+        fg: 'white'
       }
     });
 
     // Chat panel (left side, main area)
     this.chatBox = blessed.box({
       label: ' Conversation ',
-      top: 3,
+      top: 7,
       left: 0,
       width: '70%',
-      height: '100%-6',
+      height: '100%-10',
       border: { type: 'line' },
       style: {
         border: { fg: 'cyan' },
@@ -120,7 +140,7 @@ class PACETerminalBlessed {
     // Weather panel (top right)
     this.weatherBox = blessed.box({
       label: ' Weather ',
-      top: 3,
+      top: 7,
       left: '70%',
       width: '30%',
       height: 12,
@@ -136,10 +156,10 @@ class PACETerminalBlessed {
     // News panel (bottom right)
     this.newsBox = blessed.box({
       label: ' Latest News ',
-      top: 15,
+      top: 19,
       left: '70%',
       width: '30%',
-      height: '100%-18',
+      height: '100%-22',
       border: { type: 'line' },
       style: {
         border: { fg: 'green' },
@@ -185,6 +205,7 @@ class PACETerminalBlessed {
     });
 
     // Append all widgets
+    this.screen.append(logo);
     this.screen.append(topBar);
     this.screen.append(this.timeDisplay);
     this.screen.append(this.chatBox);
@@ -385,25 +406,75 @@ Enter     - Send message (when input focused)`;
   }
 
   private handleServerMessage(message: string) {
+    // Strip server prefixes like "Task Complete$$", "Task Failed$$", etc.
+    let cleanMessage = message;
+    const prefixes = ['Task Complete$$', 'Task Failed$$', 'Progress$$'];
+    for (const prefix of prefixes) {
+      if (message.startsWith(prefix)) {
+        cleanMessage = message.substring(prefix.length).trim();
+        break;
+      }
+    }
+
     // Check if it's weather data
-    if (message.includes('°') || message.toLowerCase().includes('weather')) {
-      this.weatherData = message;
+    if (cleanMessage.includes('°') || cleanMessage.toLowerCase().includes('temperature') || cleanMessage.toLowerCase().includes('feels like')) {
+      this.weatherData = cleanMessage;
       this.updateWeather();
     }
-    // Check if it's news data
-    else if (message.toLowerCase().includes('news') || message.toLowerCase().includes('headline')) {
-      // Parse news headlines
-      const lines = message.split('\n').filter(line => line.trim());
+    // Check if it's news data - look for multiple headlines
+    else if (cleanMessage.toLowerCase().includes('headline') ||
+             (cleanMessage.split('\n').length > 3 && cleanMessage.toLowerCase().includes('news'))) {
+      // Parse news headlines - split by newlines and filter empty lines
+      const lines = cleanMessage.split('\n').filter(line => {
+        const trimmed = line.trim();
+        // Filter out headers and empty lines
+        return trimmed &&
+               !trimmed.toLowerCase().startsWith('here') &&
+               !trimmed.toLowerCase().startsWith('latest') &&
+               !trimmed.match(/^\d+[\.\)]/); // Skip numbered list prefixes
+      });
+
       if (lines.length > 0) {
         this.newsData = lines;
         this.currentNewsIndex = 0;
         this.updateNews();
       }
     }
-    // Regular message
+    // Regular message - use typewriter effect for long messages
     else {
-      this.addMessage('pace', message);
+      if (cleanMessage.length > 200) {
+        this.addMessageWithTypewriter('pace', cleanMessage);
+      } else {
+        this.addMessage('pace', cleanMessage);
+      }
     }
+  }
+
+  private async addMessageWithTypewriter(type: 'pace', content: string) {
+    const message: Message = {
+      type,
+      content: '',
+      timestamp: new Date()
+    };
+
+    this.messages.push(message);
+    this.isTyping = true;
+
+    // Type out character by character
+    for (let i = 0; i < content.length; i++) {
+      message.content += content[i];
+      this.updateChat();
+
+      // Small delay for typewriter effect (adjust for speed)
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Allow interruption
+      if (!this.isTyping) break;
+    }
+
+    this.isTyping = false;
+    message.content = content; // Ensure full content is set
+    this.updateChat();
   }
 
   private addMessage(type: 'user' | 'pace' | 'system', content: string) {
@@ -491,7 +562,16 @@ Enter     - Send message (when input focused)`;
       const timeStr = now.toLocaleTimeString();
       const dateStr = now.toLocaleDateString();
 
-      this.timeDisplay.setContent(`{bold}${timeStr}{/bold} ${dateStr} `);
+      const statusIcon = this.connected ? '●' : this.reconnecting ? '◐' : '○';
+      const statusColor = this.connected ? 'green' : this.reconnecting ? 'yellow' : 'red';
+      const statusText = this.connected ? 'Connected' : this.reconnecting ? 'Reconnecting...' : 'Disconnected';
+
+      this.timeDisplay.setContent(
+        `{center}{bold}${timeStr}{/bold}\n` +
+        `{gray-fg}${dateStr}{/gray-fg}\n\n` +
+        `{${statusColor}-fg}${statusIcon}{/${statusColor}-fg} ${statusText}\n\n` +
+        `{gray-fg}v2.0{/gray-fg}{/center}`
+      );
       this.screen.render();
     };
 
