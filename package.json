@@ -6,8 +6,9 @@
   "main": "dist/src/server/index.js",
   "scripts": {
     "dev": "tsx watch src/server/index.ts",
-    "dev:cli": "tsx src/cli/index.ts",
-    "cli": "tsx src/cli/index.ts",
+    "dev:cli": "tsx src/cli/index-blessed.ts",
+    "cli": "node dist/src/cli/index-blessed.js",
+    "cli:legacy": "node dist/src/cli/index.js",
     "dashboard": "tsx src/cli/status-dashboard.ts",
     "status": "node dist/src/cli/status-dashboard.js",
     "build": "tsc",

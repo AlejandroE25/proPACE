@@ -95,7 +95,7 @@ cp .env.example .env
 # Run server in development mode
 npm run dev
 
-# Run CLI client in development mode
+# Run beautiful CLI client (chat with PACE)
 npm run dev:cli
 
 # Run status dashboard (monitor server in real-time)
@@ -119,6 +119,9 @@ npm run build
 
 # Run server
 npm start
+
+# Run beautiful CLI client (chat with PACE)
+npm run cli
 
 # Run status dashboard (monitor server in real-time)
 npm run status

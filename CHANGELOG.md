@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File: `src/cli/status-dashboard.ts`
   - Run with: `npm run dashboard` (dev) or `npm run status` (production)
   - Documentation: `docs/STATUS-DASHBOARD.md`
+- **New Beautiful CLI Client using blessed framework**
+  - Complete redesign of terminal client with modern TUI dashboard layout
+  - Multi-panel interface: Chat, Weather, News, Input
+  - Real-time chat with color-coded messages and timestamps
+  - Live weather widget with auto-refresh
+  - Scrollable news feed with n/p navigation
+  - Comprehensive keyboard shortcuts (Ctrl+S, Ctrl+L, Tab, Enter)
+  - Connection status indicator and auto-reconnect
+  - Cross-platform support (Linux, macOS, Windows)
+  - File: `src/cli/index-blessed.ts`
+  - Run with: `npm run dev:cli` (dev) or `npm run cli` (production)
+  - Legacy CLI available as: `npm run cli:legacy`
+  - Documentation: `docs/CLI-BLESSED.md`
 
 ### Fixed
 - Fixed Windows compatibility issue where server would exit immediately on startup
