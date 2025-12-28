@@ -111,8 +111,10 @@ Write-Host "      ✓ All critical files present`n" -ForegroundColor Green
 
 # Success!
 Write-Host "=== Rebuild Complete! ===" -ForegroundColor Cyan
-Write-Host "`nYour proPACE server is ready to run." -ForegroundColor Green
-Write-Host "`nNext steps" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Your proPACE server is ready to run." -ForegroundColor Green
+Write-Host ""
+Write-Host "Next steps" -ForegroundColor Yellow
 Write-Host "  1. Ensure .env file exists with your API keys" -ForegroundColor White
-Write-Host "  2. Start the server with npm start" -ForegroundColor White
+Write-Host "  2. Run npm start to start the server" -ForegroundColor White
 Write-Host ""
