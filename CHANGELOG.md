@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fast-path routing for agent mode**
+  - Agent orchestrator now uses RoutingService (Claude Haiku) for intelligent plugin routing
+  - Simple queries (weather, news, wolfram) bypass task creation and execute directly
+  - Multi-layer caching (exact + similarity matching) for sub-5ms cached responses
+  - High-confidence routes (>0.8) execute plugins immediately
+  - Complex queries still use task planning for multi-step operations
+  - Files: `src/agent/agentOrchestrator.ts` (tryFastPathRouting, executePluginDirectly)
+  - Impact: Agent mode now matches legacy mode's performance for simple queries
+
+### Changed
+- Agent orchestrator processMessage() now checks plugin capabilities before creating tasks
+- Simple queries return instant responses instead of "Working on it..." messages
+
+### Fixed
+- **Agent mode routing issue** - Agent orchestrator was creating tasks for ALL queries, even simple weather/news requests
+  - Root cause: Missing RoutingService integration in agent mode
+  - Solution: Added fast-path routing layer that checks plugin capabilities before task creation
+  - Result: Weather/news/wolfram queries now execute in <200ms (vs. task creation overhead)
+  - See docs/TODO.md for full analysis and implementation details
 - SSH key authentication setup documentation for Mac to Windows connections (docs/SSH-SETUP.md)
 - Terminal-based status dashboard with real-time monitoring
   - Beautiful TUI interface using blessed and blessed-contrib

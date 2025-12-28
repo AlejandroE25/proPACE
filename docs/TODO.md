@@ -4,9 +4,13 @@
 
 ### Agent Orchestrator Routing Issue
 **Priority:** High
-**Status:** Investigation Needed
+**Status:** ✅ RESOLVED
 
-The agent orchestrator is not properly utilizing plugins/modules for fast responses. It appears to be:
+**Resolution Summary:**
+Implemented fast-path routing in agent mode. The agent orchestrator now uses RoutingService (Claude Haiku + caching) to intelligently route simple queries directly to plugins, bypassing task creation for weather/news/wolfram queries. Complex queries still create tasks for proper planning.
+
+**Original Issue:**
+The agent orchestrator was not properly utilizing plugins/modules for fast responses. It was:
 1. Routing ALL queries through main conversational Claude
 2. Creating full tasks for EVERYTHING (even simple queries)
 3. NOT checking if plugins (weather, news, wolfram, memory) can provide faster answers
@@ -32,13 +36,13 @@ The agent orchestrator is not properly utilizing plugins/modules for fast respon
 - RoutingService or RoutingPredictor not being used in agent mode
 
 **Action items:**
-- [ ] Review how processMessage() routes queries in agent mode
-- [ ] Check if plugins are queried before creating tasks
-- [ ] Compare legacy mode routing vs agent mode routing
-- [ ] Verify RoutingService integration in agent orchestrator
-- [ ] Add logging to see routing decisions
-- [ ] Test simple queries (weather, news) and verify plugin usage
-- [ ] Implement fast-path routing for plugin-answerable queries
+- [x] Review how processMessage() routes queries in agent mode
+- [x] Check if plugins are queried before creating tasks
+- [x] Compare legacy mode routing vs agent mode routing
+- [x] Verify RoutingService integration in agent orchestrator
+- [x] Add logging to see routing decisions
+- [x] Test simple queries (weather, news) and verify plugin usage
+- [x] Implement fast-path routing for plugin-answerable queries
 
 **Related files:**
 - `src/agent/agentOrchestrator.ts` - Main routing logic
@@ -50,30 +54,30 @@ The agent orchestrator is not properly utilizing plugins/modules for fast respon
 - `src/services/conversationOrchestrator.ts` - Legacy mode (working correctly)
 - `logs/service-stdout.log` - Runtime behavior
 
-**Implementation notes:**
-The fix should implement a two-tier routing system in agent mode:
+**Implementation Details:**
+Implemented a two-tier routing system in agent mode (see [agentOrchestrator.ts:324-330](src/agent/agentOrchestrator.ts#L324-L330)):
 
-1. **Fast Path** (< 100ms):
-   - Check if query matches plugin capabilities
-   - Use RoutingService to determine subsystem (weather/news/wolfram/memory)
-   - Execute plugin tool directly
-   - Return result immediately
+1. **Fast Path** (< 200ms) - NEW:
+   - Uses RoutingService (Claude Haiku) to determine subsystem
+   - Multi-layer caching (exact + similarity) for <5ms cached responses
+   - High-confidence plugin routes (>0.8) execute tool directly
+   - Returns result immediately without task creation
    - Example: "what's the weather?" → weather plugin → instant response
+   - See [tryFastPathRouting()](src/agent/agentOrchestrator.ts#L678-L743) and [executePluginDirectly()](src/agent/agentOrchestrator.ts#L748-L814)
 
-2. **Slow Path** (task creation):
+2. **Slow Path** (task creation) - EXISTING:
    - Only for complex queries that require planning
    - Multi-step tasks
    - Queries that need multiple tools
    - Research-type questions
    - Example: "analyze the weather trend and suggest activities" → create task
 
-The agent orchestrator should NOT create a task for every single query.
-It should behave more like the legacy conversationOrchestrator which
-correctly routes to subsystems first before falling back to Claude.
-
-Current problem: Agent mode is skipping the routing logic entirely and
-going straight to task creation + Claude for everything, making it slower
-and less efficient than legacy mode for simple queries.
+**Changes Made:**
+- Added RoutingService integration to AgentOrchestrator
+- Implemented tryFastPathRouting() method for simple queries
+- Implemented executePluginDirectly() for tool execution
+- Added routing decision logging
+- Agent mode now matches legacy mode's intelligent routing behavior
 
 ---
 

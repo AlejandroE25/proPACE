@@ -22,6 +22,8 @@ import { ContextAnalyzer } from './contextAnalyzer.js';
 import { LearningEngine } from './learningEngine.js';
 import { PatternRecognition } from './patternRecognition.js';
 import { SuggestionEngine } from './suggestionEngine.js';
+import { RoutingService } from '../services/routingService.js';
+import { SubsystemType } from '../types/index.js';
 import {
   PlanningContext,
   AuditEventType,
@@ -45,6 +47,7 @@ export class AgentOrchestrator {
   private learningEngine: LearningEngine;
   private patternRecognition: PatternRecognition;
   private suggestionEngine: SuggestionEngine;
+  private routingService: RoutingService;
 
   /** Conversation history per client */
   private conversationHistory: Map<
@@ -106,6 +109,9 @@ export class AgentOrchestrator {
       'claude-haiku-4-20250514',
       0.7
     );
+
+    // Initialize routing service for fast-path plugin routing
+    this.routingService = new RoutingService(anthropicApiKey);
 
     this.planner = new AgentPlanner(anthropicApiKey, pluginRegistry, planningModel);
     this.executor = new AgentExecutor(
@@ -315,10 +321,19 @@ export class AgentOrchestrator {
         return `I've updated the plan for "${relatedTask.query}" based on your new information. I'll incorporate this and continue working on it.`;
       }
 
+      // FAST PATH: Check if simple plugin can handle this query
+      // This prevents creating tasks for simple weather/news/wolfram queries
+      const fastPathResponse = await this.tryFastPathRouting(message, history, correlationId, clientId);
+      if (fastPathResponse) {
+        logger.info('Query handled via fast-path plugin routing', { message });
+        return fastPathResponse;
+      }
+
+      // SLOW PATH: Complex query requiring task planning
       // New task - create and execute in background
       const task = this.concurrentRequestManager.createTask(clientId, message);
 
-      logger.info('Created new task', { taskId: task.taskId, clientId });
+      logger.info('Created new task for complex query', { taskId: task.taskId, clientId });
 
       // Fire off execution in background (non-blocking)
       this.executeTaskInBackground(task.taskId, clientId, message, history, correlationId);
@@ -654,6 +669,148 @@ export class AgentOrchestrator {
    */
   getGlobalContext(): GlobalContextStore {
     return this.globalContext;
+  }
+
+  /**
+   * Try fast-path routing to plugins for simple queries
+   * Returns response if handled, null if should fall through to task creation
+   */
+  private async tryFastPathRouting(
+    message: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>,
+    correlationId: string,
+    clientId: string
+  ): Promise<string | null> {
+    const startTime = Date.now();
+
+    // Get routing decision from RoutingService (uses Haiku + caching)
+    const routingDecision = await this.routingService.getRoutingDecision(message);
+
+    logger.info(
+      `Fast-path routing decision: ${routingDecision.subsystem} (confidence: ${routingDecision.confidence}, cached: ${routingDecision.cached})`
+    );
+
+    // Only use fast-path for high-confidence plugin routes (not claude)
+    // If confidence is high and it's a plugin, execute directly
+    if (
+      this.routingService.shouldRouteDirectly(routingDecision) &&
+      routingDecision.subsystem !== 'claude'
+    ) {
+      const response = await this.executePluginDirectly(routingDecision.subsystem, message);
+
+      if (response) {
+        // Successfully executed via fast path
+        const elapsed = Date.now() - startTime;
+
+        // Add to conversation history
+        history.push(
+          { role: 'user', content: message, timestamp: new Date() },
+          { role: 'assistant', content: response, timestamp: new Date() }
+        );
+
+        // Record for learning
+        this.learningEngine.recordInteraction(
+          message,
+          routingDecision.subsystem,
+          response,
+          elapsed,
+          { fastPath: true, cached: routingDecision.cached }
+        );
+
+        // Audit log
+        this.auditLogger.log(
+          clientId,
+          AuditEventType.PLAN_CREATED,
+          {
+            fastPath: true,
+            subsystem: routingDecision.subsystem,
+            confidence: routingDecision.confidence,
+            cached: routingDecision.cached
+          },
+          correlationId
+        );
+
+        logger.info(
+          `Fast-path executed ${routingDecision.subsystem} in ${elapsed}ms (cached: ${routingDecision.cached})`
+        );
+
+        return response;
+      }
+    }
+
+    // No fast-path match - fall through to task creation
+    return null;
+  }
+
+  /**
+   * Execute plugin tool directly (for fast-path routing)
+   */
+  private async executePluginDirectly(
+    subsystem: SubsystemType,
+    message: string
+  ): Promise<string | null> {
+    try {
+      // Get tools from plugin registry
+      const allTools = this.pluginRegistry.getAllTools();
+
+      // Create minimal execution context for direct tool execution
+      const context = {
+        clientId: 'system',
+        conversationHistory: [],
+        previousStepResults: new Map()
+      };
+
+      switch (subsystem) {
+        case 'weather': {
+          const weatherTool = allTools.find((t) => t.name === 'get_weather');
+          if (weatherTool) {
+            const result = await weatherTool.execute({}, context);
+            if (result.success && result.data) {
+              return typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+            }
+          }
+          break;
+        }
+
+        case 'news': {
+          const newsTool = allTools.find((t) => t.name === 'get_news');
+          if (newsTool) {
+            const result = await newsTool.execute({}, context);
+            if (result.success && result.data) {
+              return typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+            }
+          }
+          break;
+        }
+
+        case 'wolfram': {
+          const wolframTool = allTools.find((t) => t.name === 'wolfram_query');
+          if (wolframTool) {
+            const result = await wolframTool.execute({ query: message }, context);
+            if (result.success && result.data) {
+              const resultStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+
+              // Check if Wolfram actually found an answer
+              if (
+                !resultStr.includes("couldn't find") &&
+                !resultStr.includes('encountered an error')
+              ) {
+                return resultStr;
+              }
+            }
+          }
+          break;
+        }
+
+        default:
+          return null;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error(`Error executing ${subsystem} plugin directly:`, error);
+      return null;
+    }
   }
 
   /**
