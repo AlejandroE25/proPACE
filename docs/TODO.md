@@ -2,6 +2,33 @@
 
 ## High Priority
 
+### Agent Orchestrator Issue
+**Priority:** High
+**Status:** Investigation Needed
+
+There appears to be something wrong with the agent orchestrator. Needs investigation and debugging.
+
+**Symptoms to investigate:**
+- Unexpected behavior in agent mode
+- Potential issues with task execution
+- Message handling or routing problems
+
+**Action items:**
+- [ ] Reproduce the issue
+- [ ] Check agent orchestrator logs
+- [ ] Review agentOrchestrator.ts for bugs
+- [ ] Test agent vs legacy mode comparison
+- [ ] Check task executor and planner integration
+- [ ] Verify plugin registry communication
+
+**Related files:**
+- `src/agent/agentOrchestrator.ts`
+- `src/agent/agentPlanner.ts`
+- `src/agent/agentExecutor.ts`
+- `logs/service-stdout.log`
+
+---
+
 ### API Endpoints for Server Information
 **Priority:** High
 **Target Date:** Tomorrow
