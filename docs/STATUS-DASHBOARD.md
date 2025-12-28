@@ -73,9 +73,17 @@ npm run status
 | Key | Action |
 |-----|--------|
 | `q` or `Ctrl+C` | Exit dashboard |
-| `r` | Manual refresh |
+| `r` | Manual refresh (also resets auto-refresh timer) |
 | `↑` `↓` | Navigate plugin list |
 | `Mouse` | Click to interact with elements |
+
+## Auto-Refresh
+
+The dashboard automatically refreshes data every **2 minutes**. The status bar shows:
+- **Last refresh:** Time since last data fetch
+- **Next:** Countdown to next automatic refresh
+
+You can still manually refresh at any time by pressing `r`, which will also reset the auto-refresh timer.
 
 ## Information Displayed
 

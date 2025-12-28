@@ -40,7 +40,9 @@ class StatusDashboard {
   private pluginList: blessed.Widgets.ListElement;
   private healthTable: contrib.widget.Table;
   private logBox: blessed.Widgets.Log;
+  private statusBar: blessed.Widgets.TextElement;
   private ws: WebSocket | null = null;
+  private lastRefresh: Date = new Date();
 
   private serverStatus: ServerStatus = {
     status: 'CHECKING...',
@@ -127,8 +129,8 @@ class StatusDashboard {
     });
 
     // Status Bar (very bottom)
-    this.grid.set(11, 0, 1, 12, blessed.text, {
-      content: ' Press Ctrl+C or q to exit | r to refresh | Arrow keys to navigate',
+    this.statusBar = this.grid.set(11, 0, 1, 12, blessed.text, {
+      content: ' Press Ctrl+C or q to exit | r to refresh | Auto-refresh: ON (every 2 min)',
       style: {
         fg: 'black',
         bg: 'white'
@@ -143,7 +145,9 @@ class StatusDashboard {
 
     this.screen.key(['r'], () => {
       this.addLog('Manual refresh triggered');
+      this.lastRefresh = new Date();
       this.fetchStatus();
+      this.updateStatusBar();
     });
 
     // Focus handling
@@ -170,6 +174,39 @@ class StatusDashboard {
     setInterval(() => {
       this.updateDisplay();
     }, 2000);
+
+    // Auto-refresh data every 2 minutes
+    setInterval(() => {
+      this.addLog('{blue-fg}Auto-refreshing status...{/blue-fg}');
+      this.lastRefresh = new Date();
+      this.fetchStatus();
+      this.updateStatusBar();
+    }, 120000); // 120000ms = 2 minutes
+
+    // Update status bar with time info every second
+    setInterval(() => {
+      this.updateStatusBar();
+    }, 1000);
+  }
+
+  private updateStatusBar() {
+    const now = new Date();
+    const timeSinceRefresh = Math.floor((now.getTime() - this.lastRefresh.getTime()) / 1000);
+    const minutesAgo = Math.floor(timeSinceRefresh / 60);
+    const secondsAgo = timeSinceRefresh % 60;
+
+    const timeText = minutesAgo > 0
+      ? `${minutesAgo}m ${secondsAgo}s ago`
+      : `${secondsAgo}s ago`;
+
+    const nextRefresh = 120 - timeSinceRefresh;
+    const nextMin = Math.floor(nextRefresh / 60);
+    const nextSec = nextRefresh % 60;
+
+    this.statusBar.setContent(
+      ` Ctrl+C: Quit | r: Refresh | Last refresh: ${timeText} | Next: ${nextMin}m ${nextSec}s`
+    );
+    this.screen.render();
   }
 
   private connectWebSocket() {

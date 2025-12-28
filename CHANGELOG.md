@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File: `docs/TODO.md`
 
 ### Changed
+- Status dashboard improvements
+  - Added automatic refresh every 2 minutes
+  - Status bar now shows "Last refresh" and countdown to next refresh
+  - Manual refresh (r key) now resets the auto-refresh timer
+  - File: `src/cli/status-dashboard.ts`
 - CLI improvements based on user feedback
   - Restored original ASCII art logo ("proPACE" banner)
   - Fixed message parsing to strip server prefixes (Task Complete$$, Task Failed$$, etc.)
