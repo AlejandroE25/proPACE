@@ -56,15 +56,15 @@ echo.
 
 REM Step 2: Install dependencies
 echo [2/5] Installing dependencies...
-echo       Running: npm ci --omit=optional
+echo       Running: npm ci
 echo       ^(npm ci does a clean install from package-lock.json^)
 
-npm ci --omit=optional
+npm ci
 
 if errorlevel 1 (
     echo.
     echo       WARNING: npm ci failed, trying npm install as fallback...
-    npm install --omit=optional --legacy-peer-deps --force
+    npm install --legacy-peer-deps
 
     if errorlevel 1 (
         echo       ERROR during npm install
