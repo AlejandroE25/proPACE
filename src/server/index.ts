@@ -23,6 +23,7 @@ import { GlobalContextPlugin } from '../plugins/core/globalContextPlugin.js';
 import { VoiceInterfacePlugin } from '../plugins/interfaces/voiceInterfacePlugin.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
 import { EventType, EventPriority } from '../events/types.js';
+import { pathToFileURL } from 'url';
 
 /**
  * Main PACE Server Entry Point
@@ -347,7 +348,7 @@ class PACEServer {
 }
 
 // Start server if run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const server = new PACEServer();
 
   // Graceful shutdown
