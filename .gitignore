@@ -45,6 +45,9 @@ npm-debug.log*
 *.sqlite
 *.sqlite3
 
+# Auto-update backups
+.backups/
+
 # IDE
 .vscode/
 .idea/
