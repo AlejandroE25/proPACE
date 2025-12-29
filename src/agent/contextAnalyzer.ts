@@ -41,7 +41,7 @@ export class ContextAnalyzer {
     anthropicApiKey: string,
     globalContext: GlobalContextStore,
     memoryStore?: MemoryStore,
-    analysisModel: string = 'claude-haiku-4-20250514'
+    analysisModel: string = 'claude-haiku-4-5-20251001'
   ) {
     this.anthropic = new Anthropic({ apiKey: anthropicApiKey });
     this.globalContext = globalContext;

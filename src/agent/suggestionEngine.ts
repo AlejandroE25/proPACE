@@ -34,7 +34,7 @@ export class SuggestionEngine extends EventEmitter {
     globalContext: GlobalContextStore,
     patternRecognition: PatternRecognition,
     learningEngine: LearningEngine,
-    analysisModel: string = 'claude-haiku-4-20250514',
+    analysisModel: string = 'claude-haiku-4-5-20251001',
     confidenceThreshold: number = 0.7
   ) {
     super();
