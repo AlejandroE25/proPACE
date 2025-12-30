@@ -850,6 +850,10 @@ export class AgentOrchestrator {
           if (weatherTool) {
             const result = await weatherTool.execute({}, context);
             if (result.success && result.data) {
+              // Check for formatted field first, then string, then stringify
+              if (typeof result.data === 'object' && result.data.formatted) {
+                return result.data.formatted;
+              }
               return typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
             }
           }
@@ -861,6 +865,10 @@ export class AgentOrchestrator {
           if (newsTool) {
             const result = await newsTool.execute({}, context);
             if (result.success && result.data) {
+              // Use formatted field if available, otherwise fallback to stringify
+              if (typeof result.data === 'object' && result.data.formatted) {
+                return result.data.formatted;
+              }
               return typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
             }
           }
