@@ -66,7 +66,7 @@ function connect() {
         // Display user query immediately
         queryText.textContent = query;
 
-        // Typewriter effect for AI response with formatting
+        // Typewriter effect for AI response with full markdown rendering
         response.innerHTML = "";
         let i = 0;
         let displayText = "";
@@ -76,14 +76,8 @@ function connect() {
                 displayText += responseMsg.charAt(i);
                 i++;
 
-                // Convert markdown-style formatting to HTML
-                let formattedText = displayText
-                    .replace(/\n/g, '<br>')
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                    .replace(/`(.+?)`/g, '<code>$1</code>');
-
-                response.innerHTML = formattedText;
+                // Render markdown to HTML
+                response.innerHTML = renderMarkdown(displayText);
 
                 // Scroll to bottom as text appears
                 const chatMessages = document.getElementById('chat-messages');
@@ -113,16 +107,74 @@ function connect() {
     }
 }
 
-// HTML escaping for security
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
+// Markdown renderer with full feature support
+function renderMarkdown(text) {
+    let html = text;
+
+    // Escape HTML first to prevent XSS
+    html = html
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Code blocks (triple backticks) - must come before inline code
+    html = html.replace(/```(\w+)?\n([\s\S]+?)```/g, function(match, lang, code) {
+        const language = lang || 'text';
+        return `<pre><code class="language-${language}">${code.trim()}</code></pre>`;
+    });
+
+    // Blockquotes
+    html = html.replace(/^&gt;\s(.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Headers (h1-h6)
+    html = html.replace(/^######\s(.+)$/gm, '<h6>$1</h6>');
+    html = html.replace(/^#####\s(.+)$/gm, '<h5>$1</h5>');
+    html = html.replace(/^####\s(.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^###\s(.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^##\s(.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^#\s(.+)$/gm, '<h1>$1</h1>');
+
+    // Horizontal rules
+    html = html.replace(/^---$/gm, '<hr>');
+    html = html.replace(/^\*\*\*$/gm, '<hr>');
+
+    // Unordered lists
+    html = html.replace(/^\*\s(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^-\s(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^(\+)\s(.+)$/gm, '<li>$2</li>');
+
+    // Ordered lists
+    html = html.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
+
+    // Wrap consecutive <li> in <ul> or <ol>
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+        return '<ul>' + match + '</ul>';
+    });
+
+    // Links [text](url)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Images ![alt](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+
+    // Bold and italic (must be in this order)
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Strikethrough
+    html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+    // Inline code (after code blocks)
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
 }
 
 var iSentTheMessage = true
