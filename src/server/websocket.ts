@@ -6,6 +6,8 @@ import { randomUUID } from 'crypto';
 import { PACEClient } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { AgentOrchestrator } from '../agent/agentOrchestrator.js';
+import { WeatherService } from '../services/weatherService.js';
+import { NewsService } from '../services/newsService.js';
 
 export interface WebSocketServerOptions {
   port: number;
@@ -27,6 +29,8 @@ export class PACEWebSocketServer {
   private onClientDisconnectedHandler?: (clientId: string) => void;
   private onWebRTCSignalingHandler?: (clientId: string, message: any) => Promise<void>;
   private agentOrchestrator?: AgentOrchestrator;
+  private weatherService?: WeatherService;
+  private newsService?: NewsService;
 
   constructor(options: WebSocketServerOptions) {
     this.options = options;
@@ -37,6 +41,20 @@ export class PACEWebSocketServer {
    */
   setAgentOrchestrator(orchestrator: AgentOrchestrator): void {
     this.agentOrchestrator = orchestrator;
+  }
+
+  /**
+   * Set the weather service (for API endpoint access)
+   */
+  setWeatherService(service: WeatherService): void {
+    this.weatherService = service;
+  }
+
+  /**
+   * Set the news service (for API endpoint access)
+   */
+  setNewsService(service: NewsService): void {
+    this.newsService = service;
   }
 
   /**
@@ -180,6 +198,18 @@ export class PACEWebSocketServer {
       return;
     }
 
+    // GET /api/weather endpoint
+    if (req.url === '/api/weather' && req.method === 'GET') {
+      this.handleWeatherRequest(req, res);
+      return;
+    }
+
+    // GET /api/news endpoint
+    if (req.url === '/api/news' && req.method === 'GET') {
+      this.handleNewsRequest(req, res);
+      return;
+    }
+
     // Unknown API endpoint
     res.writeHead(404);
     res.end(JSON.stringify({ error: 'API endpoint not found' }));
@@ -269,6 +299,66 @@ export class PACEWebSocketServer {
       res.writeHead(500);
       res.end(JSON.stringify({
         error: 'Failed to get update status',
+        message: error.message
+      }));
+    }
+  }
+
+  /**
+   * Handle weather API request
+   */
+  private async handleWeatherRequest(_req: any, res: any): Promise<void> {
+    try {
+      if (!this.weatherService) {
+        res.writeHead(503);
+        res.end(JSON.stringify({
+          error: 'Weather service not available'
+        }));
+        return;
+      }
+
+      const weatherData = await this.weatherService.getWeatherFormatted();
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        data: weatherData,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error: any) {
+      logger.error('Error fetching weather:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({
+        error: 'Failed to fetch weather',
+        message: error.message
+      }));
+    }
+  }
+
+  /**
+   * Handle news API request
+   */
+  private async handleNewsRequest(_req: any, res: any): Promise<void> {
+    try {
+      if (!this.newsService) {
+        res.writeHead(503);
+        res.end(JSON.stringify({
+          error: 'News service not available'
+        }));
+        return;
+      }
+
+      const newsData = await this.newsService.getNewsFormatted();
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        data: newsData,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error: any) {
+      logger.error('Error fetching news:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({
+        error: 'Failed to fetch news',
         message: error.message
       }));
     }

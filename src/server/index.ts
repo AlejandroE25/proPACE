@@ -75,6 +75,16 @@ class PACEServer {
     // Set up message handler
     this.wsServer.setMessageHandler(this.handleMessage.bind(this));
 
+    // Set up services for API endpoints (if in legacy mode)
+    if (!config.enableAgentMode) {
+      if (this.weatherService) {
+        this.wsServer.setWeatherService(this.weatherService);
+      }
+      if (this.newsService) {
+        this.wsServer.setNewsService(this.newsService);
+      }
+    }
+
     // Set up client connection handlers (for global context)
     if (config.enableAgentMode && this.agentOrchestrator) {
       this.wsServer.setClientConnectedHandler((clientId) => {

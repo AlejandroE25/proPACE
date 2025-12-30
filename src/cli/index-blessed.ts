@@ -393,60 +393,79 @@ Enter     - Send message (when input focused)`;
     this.addSystemMessage(helpText);
   }
 
-  private requestWeather() {
-    if (this.ws && this.connected) {
-      this.ws.send('What\'s the weather?');
+  private async requestWeather() {
+    try {
+      const response = await fetch(`http://${this.config.host}:${this.config.port}/api/weather`);
+      const data = await response.json() as { success: boolean; data: string };
+
+      if (data.success) {
+        this.weatherData = data.data;
+        this.updateWeather();
+      } else {
+        this.weatherData = 'Failed to fetch weather';
+        this.updateWeather();
+      }
+    } catch (error) {
+      this.weatherData = 'Error fetching weather';
+      this.updateWeather();
     }
   }
 
-  private requestNews() {
-    if (this.ws && this.connected) {
-      this.ws.send('What\'s the latest news?');
+  private async requestNews() {
+    try {
+      const response = await fetch(`http://${this.config.host}:${this.config.port}/api/news`);
+      const data = await response.json() as { success: boolean; data: string };
+
+      if (data.success) {
+        const newsText = data.data;
+        // Parse news headlines - split by newlines and filter empty lines
+        const lines = newsText.split('\n').filter((line: string) => {
+          const trimmed = line.trim();
+          return trimmed &&
+                 !trimmed.toLowerCase().startsWith('here') &&
+                 !trimmed.toLowerCase().startsWith('latest') &&
+                 !trimmed.match(/^\d+[\.\)]/);
+        });
+
+        if (lines.length > 0) {
+          this.newsData = lines;
+          this.currentNewsIndex = 0;
+          this.updateNews();
+        }
+      } else {
+        this.newsData = ['Failed to fetch news'];
+        this.updateNews();
+      }
+    } catch (error) {
+      this.newsData = ['Error fetching news'];
+      this.updateNews();
     }
   }
 
   private handleServerMessage(message: string) {
-    // Strip server prefixes like "Task Complete$$", "Task Failed$$", etc.
-    let cleanMessage = message;
-    const prefixes = ['Task Complete$$', 'Task Failed$$', 'Progress$$'];
-    for (const prefix of prefixes) {
-      if (message.startsWith(prefix)) {
-        cleanMessage = message.substring(prefix.length).trim();
-        break;
-      }
-    }
+    try {
+      // Parse JSON message
+      const parsed = JSON.parse(message);
 
-    // Check if it's weather data
-    if (cleanMessage.includes('°') || cleanMessage.toLowerCase().includes('temperature') || cleanMessage.toLowerCase().includes('feels like')) {
-      this.weatherData = cleanMessage;
-      this.updateWeather();
-    }
-    // Check if it's news data - look for multiple headlines
-    else if (cleanMessage.toLowerCase().includes('headline') ||
-             (cleanMessage.split('\n').length > 3 && cleanMessage.toLowerCase().includes('news'))) {
-      // Parse news headlines - split by newlines and filter empty lines
-      const lines = cleanMessage.split('\n').filter(line => {
-        const trimmed = line.trim();
-        // Filter out headers and empty lines
-        return trimmed &&
-               !trimmed.toLowerCase().startsWith('here') &&
-               !trimmed.toLowerCase().startsWith('latest') &&
-               !trimmed.match(/^\d+[\.\)]/); // Skip numbered list prefixes
-      });
+      // Handle different message types
+      if (parsed.type === 'message') {
+        const response = parsed.response || '';
 
-      if (lines.length > 0) {
-        this.newsData = lines;
-        this.currentNewsIndex = 0;
-        this.updateNews();
+        // Don't display "Processing..." messages in chat
+        if (parsed.status === 'processing') {
+          return;
+        }
+
+        // All messages go to chat (weather/news now fetched via API)
+        if (response.length > 200) {
+          this.addMessageWithTypewriter('pace', response);
+        } else {
+          this.addMessage('pace', response);
+        }
       }
-    }
-    // Regular message - use typewriter effect for long messages
-    else {
-      if (cleanMessage.length > 200) {
-        this.addMessageWithTypewriter('pace', cleanMessage);
-      } else {
-        this.addMessage('pace', cleanMessage);
-      }
+    } catch (error) {
+      // Not JSON, treat as plain text fallback (shouldn't happen with new protocol)
+      this.addSystemMessage(`Received malformed message: ${message}`);
     }
   }
 
