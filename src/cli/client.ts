@@ -59,15 +59,22 @@ export class PACEClient extends EventEmitter {
    * Handle incoming messages
    */
   private handleMessage(message: string): void {
-    // Parse message format: "query$$response"
-    const parts = message.split('$$');
+    try {
+      // Parse JSON message
+      const parsed = JSON.parse(message);
 
-    if (parts.length === 2) {
-      const [query, response] = parts;
-      this.emit('message', { query, response });
-    } else {
-      // Malformed message
-      this.emit('error', new Error(`Malformed message: ${message}`));
+      // Handle different message types
+      if (parsed.type === 'message') {
+        const query = parsed.query || '';
+        const response = parsed.response || '';
+        this.emit('message', { query, response, status: parsed.status });
+      } else {
+        // Unknown message type - log but don't error
+        this.emit('message', { query: '', response: message });
+      }
+    } catch (error) {
+      // Not JSON, treat as plain text fallback
+      this.emit('message', { query: '', response: message });
     }
   }
 

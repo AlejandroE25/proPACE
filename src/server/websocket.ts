@@ -292,8 +292,13 @@ export class PACEWebSocketServer {
     }
 
     // Send welcome message
-    const welcomeMessage = ' $$ Hello! I am PACE, your personal assistant.';
-    ws.send(welcomeMessage);
+    const welcomeMessage = {
+      type: 'message',
+      query: '',
+      response: 'Hello! I am PACE, your personal assistant.',
+      timestamp: new Date().toISOString()
+    };
+    ws.send(JSON.stringify(welcomeMessage));
 
     // Handle incoming messages (non-blocking for concurrent support)
     ws.on('message', (data: Buffer) => {
@@ -373,8 +378,14 @@ export class PACEWebSocketServer {
     (async () => {
       try {
         // Send immediate acknowledgment to the specific client only
-        const acknowledgmentMessage = `${text}$$🔍 Processing...`;
-        this.sendToClient(clientId, acknowledgmentMessage);
+        const acknowledgmentMessage = {
+          type: 'message',
+          query: text,
+          response: '🔍 Processing...',
+          timestamp: new Date().toISOString(),
+          status: 'processing'
+        };
+        this.sendToClient(clientId, JSON.stringify(acknowledgmentMessage));
 
         // Call the message handler if set
         let response: string;
@@ -386,13 +397,26 @@ export class PACEWebSocketServer {
         }
 
         // Send final response to the specific client only
-        const responseMessage = `${text}$$${response}`;
-        this.sendToClient(clientId, responseMessage);
+        const responseMessage = {
+          type: 'message',
+          query: text,
+          response: response,
+          timestamp: new Date().toISOString(),
+          status: 'complete'
+        };
+        this.sendToClient(clientId, JSON.stringify(responseMessage));
       } catch (error) {
         logger.error(`Error handling message from ${clientId}:`, error);
-        const errorMessage = `${text}$$Sorry, an error occurred processing your request.`;
+        const errorMessage = {
+          type: 'message',
+          query: text,
+          response: 'Sorry, an error occurred processing your request.',
+          timestamp: new Date().toISOString(),
+          status: 'error',
+          error: (error as Error).message
+        };
         if (client.readyState === WebSocket.OPEN) {
-          client.send(errorMessage);
+          client.send(JSON.stringify(errorMessage));
         }
       }
     })();

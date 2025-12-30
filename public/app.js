@@ -56,41 +56,52 @@ function connect() {
     }
 
     ws.onmessage = function (evt) {
-        let received_msg = evt.data;
+        try {
+            // Parse JSON message
+            const message = JSON.parse(evt.data);
 
-        // Split response at '$$'
-        let splitResponse = received_msg.split("$$");
-        let query = splitResponse[0];
-        let responseMsg = splitResponse[1];
+            // Handle different message types
+            if (message.type === 'message') {
+                const query = message.query || '';
+                const responseMsg = message.response || '';
 
-        // Display user query immediately
-        queryText.textContent = query;
+                // Display user query immediately (only if it's not empty)
+                if (query) {
+                    queryText.textContent = query;
+                }
 
-        // Typewriter effect for AI response with full markdown rendering
-        response.innerHTML = "";
-        let i = 0;
-        let displayText = "";
+                // Typewriter effect for AI response with full markdown rendering
+                response.innerHTML = "";
+                let i = 0;
+                let displayText = "";
 
-        function typeWriter() {
-            if (i < responseMsg.length) {
-                displayText += responseMsg.charAt(i);
-                i++;
+                function typeWriter() {
+                    if (i < responseMsg.length) {
+                        displayText += responseMsg.charAt(i);
+                        i++;
 
-                // Render markdown to HTML
-                response.innerHTML = renderMarkdown(displayText);
+                        // Render markdown to HTML
+                        response.innerHTML = renderMarkdown(displayText);
 
-                // Scroll to bottom as text appears
-                const chatMessages = document.getElementById('chat-messages');
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                        // Scroll to bottom as text appears
+                        const chatMessages = document.getElementById('chat-messages');
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
 
-                setTimeout(typeWriter, 20); // Adjust speed (lower = faster)
+                        setTimeout(typeWriter, 20); // Adjust speed (lower = faster)
+                    }
+                }
+                typeWriter();
+
+                // Speak response if user sent the message and it's complete
+                if (iSentTheMessage === true && message.status === 'complete') {
+                    speakText(responseMsg);
+                    iSentTheMessage = false;
+                }
             }
-        }
-        typeWriter();
-
-        if (iSentTheMessage == true) {
-            speakText(responseMsg);
-            iSentTheMessage = false;
+        } catch (error) {
+            console.error('Error parsing message:', error);
+            // Fallback to display raw message
+            response.textContent = evt.data;
         }
     }
 
