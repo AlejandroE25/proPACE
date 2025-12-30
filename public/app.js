@@ -166,8 +166,14 @@ function renderMarkdown(text) {
         return tableHtml;
     });
 
-    // Blockquotes
-    html = html.replace(/^&gt;\s(.+)$/gm, '<blockquote>$1</blockquote>');
+    // Blockquotes (multi-line support)
+    html = html.replace(/(^&gt;\s.+$(\n&gt;\s.+$)*)/gm, function(match) {
+        // Remove > from each line and wrap in single blockquote
+        const lines = match.split('\n')
+            .map(line => line.replace(/^&gt;\s/, ''))
+            .join('<br>');
+        return `<blockquote>${lines}</blockquote>`;
+    });
 
     // Headers (h1-h6)
     html = html.replace(/^######\s(.+)$/gm, '<h6>$1</h6>');
