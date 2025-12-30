@@ -46,7 +46,15 @@ function currentTime() {
 
 // WebSocket connection
 function connect() {
-    ws = new WebSocket("ws://73.246.38.149:9001");
+    ws = new WebSocket("ws://10.0.0.69:3000");
+
+    ws.onopen = function() {
+        console.log("WebSocket connection established");
+        // Enable input field once connected
+        inputline.disabled = false;
+        inputline.placeholder = "Type your message here...";
+    }
+
     ws.onmessage = function (evt) {
         let received_msg = evt.data;
 
@@ -68,9 +76,17 @@ function connect() {
             iSentTheMessage = false;
         }
     }
+
     ws.onclose = function() {
         console.log("Connection is closed...");
+        // Disable input while disconnected
+        inputline.disabled = true;
+        inputline.placeholder = "Reconnecting...";
         setTimeout(connect, 1000);
+    }
+
+    ws.onerror = function(error) {
+        console.error("WebSocket error:", error);
     }
 }
 
@@ -96,10 +112,19 @@ function speakText(textToSpeak){
 
 // Input handling
 let inputline = document.getElementById("inputline")
+// Disable input until WebSocket connects
+inputline.disabled = true;
+inputline.placeholder = "Connecting...";
+
 inputline.addEventListener('keydown', function(e) {
-    if (e.keyCode === 13 && inputline.value.trim() !== "") {
-        ws.send(inputline.value);
-        iSentTheMessage = true;
-        inputline.value = "";
+    if (e.key === "Enter" && inputline.value.trim() !== "") {
+        // Check if WebSocket is ready before sending
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(inputline.value);
+            iSentTheMessage = true;
+            inputline.value = "";
+        } else {
+            console.warn("WebSocket is not connected");
+        }
     }
 });
