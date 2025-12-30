@@ -63,13 +63,25 @@ function connect() {
         let query = splitResponse[0];
         let responseMsg = splitResponse[1];
 
-        // Update message containers with HTML escaping
-        queryText.innerHTML = escapeHtml(query);
-        response.innerHTML = escapeHtml(responseMsg);
+        // Display user query immediately
+        queryText.textContent = query;
 
-        // Scroll to bottom of chat
-        const chatMessages = document.getElementById('chat-messages');
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Typewriter effect for AI response
+        response.textContent = "";
+        let i = 0;
+        function typeWriter() {
+            if (i < responseMsg.length) {
+                response.textContent += responseMsg.charAt(i);
+                i++;
+
+                // Scroll to bottom as text appears
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                setTimeout(typeWriter, 20); // Adjust speed (lower = faster)
+            }
+        }
+        typeWriter();
 
         if (iSentTheMessage == true) {
             speakText(responseMsg);

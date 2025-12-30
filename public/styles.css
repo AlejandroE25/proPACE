@@ -56,13 +56,13 @@ body {
         rgba(13,17,25,1) 0%,
         rgba(57,68,93,1) 100%
     );
-    position: absolute;
+    position: fixed;
     top: 50%;
     left: 50%;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     transform-origin: center center;
-    animation: rotate 22s linear infinite;
+    animation: rotate1 22s linear infinite;
     pointer-events: none;
     filter: blur(100px);
 }
@@ -76,22 +76,31 @@ body {
         rgba(13,17,25,1) 100%
     );
     border-radius: 50%;
-    position: absolute;
+    position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(90deg);
     transform-origin: center center;
-    animation: rotate 11s linear infinite;
+    animation: rotate2 11s linear infinite;
     pointer-events: none;
     filter: blur(100px);
 }
 
-@keyframes rotate {
+@keyframes rotate1 {
     from {
         transform: translate(-50%, -50%) rotate(0deg);
     }
     to {
         transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes rotate2 {
+    from {
+        transform: translate(-50%, -50%) rotate(90deg);
+    }
+    to {
+        transform: translate(-50%, -50%) rotate(450deg);
     }
 }
 
@@ -142,13 +151,13 @@ body {
 
 /* Glass Morphism Effect */
 .glass-morphism {
-    background: rgba(13, 17, 25, 0.7);
+    background: rgba(13, 17, 25, 0.4);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 2px solid rgba(252, 190, 36, 0.3);
+    border: 1px solid rgba(252, 190, 36, 0.1);
     box-shadow:
-        0 8px 32px 0 rgba(0, 0, 0, 0.37),
-        inset 0 0 20px rgba(252, 190, 36, 0.05);
+        0 8px 32px 0 rgba(0, 0, 0, 0.2),
+        inset 0 0 20px rgba(252, 190, 36, 0.02);
 }
 
 /* Utility Classes */
@@ -225,7 +234,7 @@ body {
 /* Chat Panel Components */
 .chat-header {
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(252, 190, 36, 0.2);
+    border-bottom: 1px solid rgba(252, 190, 36, 0.08);
     flex-shrink: 0;
 }
 
@@ -284,7 +293,7 @@ body {
 
 .chat-input {
     padding: 1rem;
-    border-top: 1px solid rgba(252, 190, 36, 0.2);
+    border-top: 1px solid rgba(252, 190, 36, 0.08);
     flex-shrink: 0;
 }
 
