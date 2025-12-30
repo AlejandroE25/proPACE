@@ -66,13 +66,24 @@ function connect() {
         // Display user query immediately
         queryText.textContent = query;
 
-        // Typewriter effect for AI response
-        response.textContent = "";
+        // Typewriter effect for AI response with formatting
+        response.innerHTML = "";
         let i = 0;
+        let displayText = "";
+
         function typeWriter() {
             if (i < responseMsg.length) {
-                response.textContent += responseMsg.charAt(i);
+                displayText += responseMsg.charAt(i);
                 i++;
+
+                // Convert markdown-style formatting to HTML
+                let formattedText = displayText
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code>$1</code>');
+
+                response.innerHTML = formattedText;
 
                 // Scroll to bottom as text appears
                 const chatMessages = document.getElementById('chat-messages');
