@@ -97,6 +97,13 @@ export class NewsPlugin implements Plugin {
   ];
 
   /**
+   * Get the news service instance (for API endpoints)
+   */
+  getNewsService(): NewsService | undefined {
+    return this.newsService;
+  }
+
+  /**
    * Initialize the news plugin
    */
   async initialize(_config: Record<string, any>): Promise<void> {

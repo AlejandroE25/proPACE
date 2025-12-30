@@ -104,6 +104,13 @@ export class WeatherPlugin implements Plugin {
   }
 
   /**
+   * Get the weather service instance (for API endpoints)
+   */
+  getWeatherService(): WeatherService | undefined {
+    return this.weatherService;
+  }
+
+  /**
    * Health check for the weather service
    */
   async healthCheck(): Promise<boolean> {

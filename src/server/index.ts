@@ -174,6 +174,20 @@ class PACEServer {
     // Set agent orchestrator for API endpoints (update trigger/status)
     this.wsServer.setAgentOrchestrator(this.agentOrchestrator);
 
+    // Set services for API endpoints (get from plugins)
+    if (weatherPlugin.getWeatherService) {
+      const weatherService = weatherPlugin.getWeatherService();
+      if (weatherService) {
+        this.wsServer.setWeatherService(weatherService);
+      }
+    }
+    if (newsPlugin.getNewsService) {
+      const newsService = newsPlugin.getNewsService();
+      if (newsService) {
+        this.wsServer.setNewsService(newsService);
+      }
+    }
+
     logger.info('Agent mode initialized successfully');
     ui.displayInitStep('Agent mode initialized', 'success');
   }
