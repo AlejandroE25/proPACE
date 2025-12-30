@@ -219,9 +219,9 @@ class PACEServer {
         }
       });
 
-      // Broadcast the final answer
-      const message = `Task Complete$$${result.finalAnswer}`;
-      this.wsServer.broadcast(message);
+      // Send the final answer to the specific client only (already wrapped in JSON by WebSocket server)
+      // Note: The response is already sent via handleMessage -> processMessage flow
+      // This event handler is just for logging and TTS
       ui.displayOutgoingResponse(clientId, result.finalAnswer);
     });
 
@@ -230,9 +230,8 @@ class PACEServer {
       logger.error(`Task ${taskId} failed for client ${clientId}: ${error}`);
       ui.displayTaskStatus(taskId, 'failed');
 
-      // Broadcast the error
-      const message = `Task Failed$$I encountered an error: ${error}`;
-      this.wsServer.broadcast(message);
+      // Send error to the specific client (already handled via handleMessage -> processMessage flow)
+      // This event handler is just for logging and UI display
     });
 
     // Progress updates (optional - for real-time feedback)
