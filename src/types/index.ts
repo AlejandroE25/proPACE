@@ -85,7 +85,7 @@ export interface WolframResult {
 /**
  * Routing subsystem types
  */
-export type SubsystemType = 'weather' | 'news' | 'wolfram' | 'claude';
+export type SubsystemType = 'weather' | 'news' | 'wolfram' | 'google_search' | 'claude';
 
 /**
  * Routing decision from intelligent router
@@ -128,6 +128,10 @@ export interface PACEConfig {
   openaiApiKey?: string;
   openWeatherMapApiKey: string;
   wolframAlphaAppId: string;
+  googleSearch: {
+    apiKey: string;
+    engineId: string;
+  };
   databasePath: string;
   maxConversationHistory: number;
   memorySearchLimit: number;

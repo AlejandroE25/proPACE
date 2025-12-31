@@ -16,6 +16,10 @@ export function loadConfig(): PACEConfig {
     openaiApiKey: process.env.OPENAI_API_KEY,
     openWeatherMapApiKey: process.env.OPENWEATHERMAP_API_KEY || '',
     wolframAlphaAppId: process.env.WOLFRAM_ALPHA_APP_ID || '',
+    googleSearch: {
+      apiKey: process.env.GOOGLE_SEARCH_API_KEY || '',
+      engineId: process.env.GOOGLE_SEARCH_ENGINE_ID || '',
+    },
     databasePath: process.env.DATABASE_PATH || './data/memories.db',
     maxConversationHistory: parseInt(process.env.MAX_CONVERSATION_HISTORY || '10', 10),
     memorySearchLimit: parseInt(process.env.MEMORY_SEARCH_LIMIT || '5', 10),

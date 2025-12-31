@@ -16,6 +16,7 @@ import { PluginRegistry } from '../plugins/pluginRegistry.js';
 import { WeatherPlugin } from '../plugins/core/weatherPlugin.js';
 import { NewsPlugin } from '../plugins/core/newsPlugin.js';
 import { WolframPlugin } from '../plugins/core/wolframPlugin.js';
+import { SearchPlugin } from '../plugins/core/searchPlugin.js';
 import { MemoryPlugin } from '../plugins/core/memoryPlugin.js';
 import { DiagnosticPlugin } from '../plugins/core/diagnosticPlugin.js';
 import { RecoveryPlugin } from '../plugins/core/recoveryPlugin.js';
@@ -123,6 +124,7 @@ class PACEServer {
     const weatherPlugin = new WeatherPlugin();
     const newsPlugin = new NewsPlugin();
     const wolframPlugin = new WolframPlugin();
+    const searchPlugin = new SearchPlugin();
     const memoryPlugin = new MemoryPlugin();
     const diagnosticPlugin = new DiagnosticPlugin();
     const recoveryPlugin = new RecoveryPlugin();
@@ -132,6 +134,7 @@ class PACEServer {
     await this.pluginRegistry.register(weatherPlugin);
     await this.pluginRegistry.register(newsPlugin);
     await this.pluginRegistry.register(wolframPlugin);
+    await this.pluginRegistry.register(searchPlugin);
     await this.pluginRegistry.register(memoryPlugin);
     await this.pluginRegistry.register(diagnosticPlugin);
     await this.pluginRegistry.register(recoveryPlugin);

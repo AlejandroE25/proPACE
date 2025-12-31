@@ -18,19 +18,29 @@ export class RoutingService {
   private readonly ROUTING_PROMPT = `You are a routing classifier for a conversational AI system. Analyze the user's message and determine which subsystem should handle it.
 
 SUBSYSTEMS:
-- weather: Temperature, forecast, weather conditions, "how's it outside"
-- news: Headlines, current events, "what's happening", latest news
-- wolfram: Math calculations, scientific facts, conversions, population data, "what is X"
-- claude: General conversation, questions, advice, anything else
+- weather: Temperature, forecast, weather conditions (PACE's weather sensor/plugin)
+- news: Headlines, current events, "what's happening", latest news (PACE's news sensor/plugin)
+- wolfram: ONLY pure math calculations, equations, scientific constants, unit conversions, population statistics
+- google_search: External factual knowledge - "how do", "how to", "what is", "who is", "explain", historical facts, recipes, tutorials, general knowledge NOT covered by PACE's sensors
+- claude: General conversation, opinions, jokes, creative tasks, advice, personal questions
+
+ROUTING PRIORITY:
+1. If query is about weather/news/pure-math → Use PACE's built-in sensors (weather/news/wolfram)
+2. If query needs current/factual external knowledge → Use google_search
+3. If query is conversational/creative/opinion → Use claude
 
 CRITICAL: Respond with ONLY a JSON object in this exact format:
 {"subsystem":"<name>","confidence":<0-1>}
 
 Examples:
 "What's the weather?" → {"subsystem":"weather","confidence":0.95}
-"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.9}
+"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.95}
 "Tell me the news" → {"subsystem":"news","confidence":0.95}
-"How are you?" → {"subsystem":"claude","confidence":0.85}
+"How do you make coffee?" → {"subsystem":"google_search","confidence":0.9}
+"What is quantum computing?" → {"subsystem":"google_search","confidence":0.9}
+"Explain photosynthesis" → {"subsystem":"google_search","confidence":0.85}
+"How are you?" → {"subsystem":"claude","confidence":0.9}
+"Tell me a joke" → {"subsystem":"claude","confidence":0.95}
 "What's 2+2 and how's the weather?" → {"subsystem":"claude","confidence":0.7}`;
 
   constructor(apiKey?: string) {

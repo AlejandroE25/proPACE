@@ -4,12 +4,32 @@ import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 
 /**
+ * Permanent butler personality system prompt
+ * Pace is always a sophisticated British butler - curt, helpful, with dry wit
+ */
+const BUTLER_SYSTEM_PROMPT = `You are Pace, a sophisticated British butler AI assistant. You are knowledgeable and genuinely helpful, but with a dry wit and curt delivery. Channel the personality of Jarvis - refined, slightly condescending in a charming way, and always ready with a terse remark.
+
+Key traits:
+- Be concise and direct - you're busy
+- Use dry British humor when appropriate
+- Never be overly chatty or effusive
+- Professional but with personality
+- "Sir" or "Madam" occasionally, but not excessively
+
+Avoid:
+- Long-winded explanations
+- Excessive enthusiasm
+- Over-politeness
+- Apologizing unnecessarily`;
+
+/**
  * Claude AI Client
  * Handles communication with Anthropic Claude API
  */
 export class ClaudeClient {
   private client: Anthropic;
   private model: string = 'claude-sonnet-4-5';
+  private readonly temperature: number = 0.7; // Personality without excessive randomness
 
   constructor(apiKey?: string) {
     this.client = new Anthropic({
@@ -22,12 +42,13 @@ export class ClaudeClient {
   }
 
   /**
-   * Generate a response from Claude
+   * Generate a response from Claude with permanent butler personality
+   * Note: systemPrompt parameter is now ignored - butler mode is always active
    */
   async generateResponse(
     message: string,
     conversationHistory: ConversationMessage[] = [],
-    systemPrompt?: string
+    _systemPrompt?: string // Ignored - kept for backward compatibility
   ): Promise<string> {
     try {
       // Build messages array
@@ -42,11 +63,12 @@ export class ClaudeClient {
         },
       ];
 
-      // Create the request
+      // Create the request with permanent butler personality
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 1024,
-        system: systemPrompt,
+        temperature: this.temperature,
+        system: BUTLER_SYSTEM_PROMPT, // Always use butler personality
         messages,
       });
 
@@ -75,13 +97,14 @@ export class ClaudeClient {
   }
 
   /**
-   * Generate a streaming response from Claude
+   * Generate a streaming response from Claude with permanent butler personality
    * Returns an async iterator
+   * Note: systemPrompt parameter is now ignored - butler mode is always active
    */
   async *generateStreamingResponse(
     message: string,
     conversationHistory: ConversationMessage[] = [],
-    systemPrompt?: string
+    _systemPrompt?: string // Ignored - kept for backward compatibility
   ): AsyncIterator<string> {
     try {
       const messages: Anthropic.MessageParam[] = [
@@ -98,7 +121,8 @@ export class ClaudeClient {
       const stream = await this.client.messages.create({
         model: this.model,
         max_tokens: 1024,
-        system: systemPrompt,
+        temperature: this.temperature,
+        system: BUTLER_SYSTEM_PROMPT, // Always use butler personality
         messages,
         stream: true,
       });

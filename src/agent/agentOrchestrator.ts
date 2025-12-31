@@ -24,6 +24,7 @@ import { LearningEngine } from './learningEngine.js';
 import { PatternRecognition } from './patternRecognition.js';
 import { SuggestionEngine } from './suggestionEngine.js';
 import { RoutingService } from '../services/routingService.js';
+import { ClaudeClient } from '../clients/claudeClient.js';
 import { SubsystemType } from '../types/index.js';
 import { UpdateMonitorConfig } from '../types/update.js';
 import {
@@ -51,6 +52,7 @@ export class AgentOrchestrator {
   private patternRecognition: PatternRecognition;
   private suggestionEngine: SuggestionEngine;
   private routingService: RoutingService;
+  private claudeClient: ClaudeClient;
 
   /** Conversation history per client */
   private conversationHistory: Map<
@@ -123,6 +125,9 @@ export class AgentOrchestrator {
 
     // Initialize routing service for fast-path plugin routing
     this.routingService = new RoutingService(anthropicApiKey);
+
+    // Initialize Claude client for direct conversational responses
+    this.claudeClient = new ClaudeClient(anthropicApiKey);
 
     this.planner = new AgentPlanner(anthropicApiKey, pluginRegistry, planningModel);
     this.executor = new AgentExecutor(
@@ -407,6 +412,27 @@ export class AgentOrchestrator {
       if (fastPathResponse) {
         logger.info('Query handled via fast-path plugin routing', { message });
         return fastPathResponse;
+      }
+
+      // Check if this is a simple query that can be handled directly by Claude
+      // to avoid unnecessary task planning overhead
+      if (this.isSimpleQuery(message)) {
+        logger.info('Simple query detected - using direct Claude response', { message });
+
+        const conversationHistory = history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+        const response = await this.claudeClient.generateResponse(message, conversationHistory);
+
+        // Add to history
+        history.push(
+          { role: 'user', content: message, timestamp: new Date() },
+          { role: 'assistant', content: response, timestamp: new Date() }
+        );
+
+        return response;
       }
 
       // SLOW PATH: Complex query requiring task planning
@@ -774,13 +800,26 @@ export class AgentOrchestrator {
       `Fast-path routing decision: ${routingDecision.subsystem} (confidence: ${routingDecision.confidence}, cached: ${routingDecision.cached})`
     );
 
-    // Only use fast-path for high-confidence plugin routes (not claude)
-    // If confidence is high and it's a plugin, execute directly
-    if (
-      this.routingService.shouldRouteDirectly(routingDecision) &&
-      routingDecision.subsystem !== 'claude'
-    ) {
-      const response = await this.executePluginDirectly(routingDecision.subsystem, message);
+    // Expand fast-path for high-confidence routes including google_search and claude
+    if (this.routingService.shouldRouteDirectly(routingDecision)) {
+      let response: string | null = null;
+
+      // Handle different subsystems
+      if (routingDecision.subsystem === 'claude') {
+        // Direct Claude response for conversational queries
+        const conversationHistory = history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+        response = await this.claudeClient.generateResponse(message, conversationHistory);
+      } else if (routingDecision.subsystem === 'google_search') {
+        // Google search with Haiku summarization
+        response = await this.executePluginDirectly('google_search', message);
+      } else {
+        // Standard plugin execution (weather, news, wolfram)
+        response = await this.executePluginDirectly(routingDecision.subsystem, message);
+      }
 
       if (response) {
         // Successfully executed via fast path
@@ -898,6 +937,22 @@ export class AgentOrchestrator {
           break;
         }
 
+        case 'google_search': {
+          const searchTool = allTools.find((t) => t.name === 'google_search');
+          if (searchTool) {
+            const result = await searchTool.execute({ query: message }, context);
+            if (result.success && result.data) {
+              // Extract summary from search results
+              const summary = typeof result.data === 'object' && result.data.summary
+                ? result.data.summary
+                : (typeof result.data === 'string' ? result.data : JSON.stringify(result.data));
+
+              return summary;
+            }
+          }
+          break;
+        }
+
         default:
           return null;
       }
@@ -907,6 +962,70 @@ export class AgentOrchestrator {
       logger.error(`Error executing ${subsystem} plugin directly:`, error);
       return null;
     }
+  }
+
+  /**
+   * Detect if a query is simple enough to skip task planning
+   * Simple queries are single-purpose, conversational, and don't require multiple tools
+   */
+  private isSimpleQuery(message: string): boolean {
+    const lowerMessage = message.toLowerCase();
+
+    // Multi-step indicators - NOT simple
+    const multiStepIndicators = [
+      'and then',
+      'after that',
+      'also',
+      'then',
+      'followed by',
+      'plus',
+      'as well as'
+    ];
+
+    if (multiStepIndicators.some(indicator => lowerMessage.includes(indicator))) {
+      return false;
+    }
+
+    // Multiple tool requirements - NOT simple
+    const hasMultipleToolReferences =
+      (lowerMessage.includes('weather') && lowerMessage.includes('news')) ||
+      (lowerMessage.includes('weather') && lowerMessage.includes('calculate')) ||
+      (lowerMessage.includes('news') && lowerMessage.includes('calculate'));
+
+    if (hasMultipleToolReferences) {
+      return false;
+    }
+
+    // Command-like queries that need execution - NOT simple
+    const commandIndicators = [
+      'send',
+      'email',
+      'create',
+      'make a',
+      'set up',
+      'schedule',
+      'remind me'
+    ];
+
+    if (commandIndicators.some(cmd => lowerMessage.includes(cmd))) {
+      return false;
+    }
+
+    // Research/investigation queries - might not be simple
+    if (
+      lowerMessage.includes('investigate') ||
+      lowerMessage.includes('research') ||
+      lowerMessage.includes('analyze')
+    ) {
+      return false;
+    }
+
+    // Everything else is considered simple:
+    // - Questions ("how are you", "what do you think", "tell me a joke")
+    // - Opinions ("do you like", "what's your favorite")
+    // - Greetings ("hello", "hi")
+    // - Follow-up conversation
+    return true;
   }
 
   /**

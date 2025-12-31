@@ -16,7 +16,8 @@ export class RoutingPredictor {
     weather: ['news', 'claude'], // After weather, users often check news
     news: ['weather', 'claude'], // After news, might check weather
     wolfram: ['claude', 'wolfram'], // Math questions often lead to more math
-    claude: ['weather', 'news', 'wolfram'], // General convo can go anywhere
+    google_search: ['claude', 'google_search'], // Knowledge queries often lead to follow-ups
+    claude: ['weather', 'news', 'wolfram', 'google_search'], // General convo can go anywhere
   };
 
   constructor() {
