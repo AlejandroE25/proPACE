@@ -44,6 +44,10 @@ function currentTime() {
     let t = setTimeout(function(){ currentTime() }, 1000);
 }
 
+// WebRTC and Audio Player instances
+let webrtcClient = null;
+let audioPlayer = null;
+
 // WebSocket connection
 function connect() {
     ws = new WebSocket("ws://10.0.0.69:3000");
@@ -53,12 +57,23 @@ function connect() {
         // Enable input field once connected
         inputline.disabled = false;
         inputline.placeholder = "Type your message here...";
+
+        // Initialize WebRTC and audio player
+        initializeWebRTC();
     }
 
     ws.onmessage = function (evt) {
         try {
             // Parse JSON message
             const message = JSON.parse(evt.data);
+
+            // Route WebRTC signaling messages
+            if (message.type === 'webrtc-offer' || message.type === 'webrtc-ice') {
+                if (webrtcClient) {
+                    webrtcClient.handleSignalingMessage(message);
+                }
+                return;
+            }
 
             // Handle different message types
             if (message.type === 'message') {
@@ -248,6 +263,12 @@ inputline.placeholder = "Connecting...";
 
 inputline.addEventListener('keydown', function(e) {
     if (e.key === "Enter" && inputline.value.trim() !== "") {
+        // Interrupt active TTS playback
+        if (audioPlayer && audioPlayer.isPlaying) {
+            audioPlayer.stop();
+            handleWebRTCStateChange('playback-interrupted');
+        }
+
         // Check if WebSocket is ready before sending
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(inputline.value);
@@ -258,3 +279,72 @@ inputline.addEventListener('keydown', function(e) {
         }
     }
 });
+
+/**
+ * Initialize WebRTC and Audio Player
+ */
+async function initializeWebRTC() {
+    try {
+        // Initialize audio player
+        audioPlayer = new AudioPlayer();
+        await audioPlayer.initialize();
+        console.log('[App] Audio player initialized');
+
+        // Initialize WebRTC client
+        webrtcClient = new WebRTCClient(null, ws, handleWebRTCStateChange);
+        await webrtcClient.initialize();
+        console.log('[App] WebRTC client initialized');
+    } catch (error) {
+        console.error('[App] Failed to initialize WebRTC:', error);
+    }
+}
+
+/**
+ * Handle WebRTC state changes and audio events
+ */
+function handleWebRTCStateChange(state, data) {
+    const logo = document.getElementById('pace_logo');
+
+    console.log('[App] WebRTC state change:', state);
+
+    switch (state) {
+        case 'audio-chunk-received':
+            // Play audio chunk
+            if (audioPlayer && data) {
+                audioPlayer.playChunk(data);
+                // Add speaking animation when first chunk arrives
+                if (logo && !logo.classList.contains('speaking')) {
+                    logo.classList.add('speaking');
+                }
+            }
+            break;
+
+        case 'playback-complete':
+        case 'playback-stopped':
+        case 'playback-interrupted':
+            // Remove speaking animation
+            if (logo) {
+                logo.classList.remove('speaking');
+            }
+            break;
+
+        case 'webrtc-connected':
+            console.log('[App] WebRTC connection established');
+            break;
+
+        case 'webrtc-failed':
+            console.error('[App] WebRTC connection failed');
+            break;
+
+        case 'webrtc-error':
+            console.error('[App] WebRTC error:', data);
+            break;
+
+        default:
+            // Log other state changes for debugging
+            console.log('[App] Unhandled state:', state);
+    }
+}
+
+// Make handleWebRTCStateChange available globally for audio player callbacks
+window.handleWebRTCStateChange = handleWebRTCStateChange;

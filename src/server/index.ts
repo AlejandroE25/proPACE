@@ -354,6 +354,13 @@ class PACEServer {
       await this.wsServer.start();
       ui.displayInitStep('WebSocket server started', 'success');
 
+      // Initialize voice plugin WebRTC components (if voice plugin exists)
+      if (this.voicePlugin) {
+        ui.displayInitStep('Initializing WebRTC TTS components', 'start');
+        this.voicePlugin.setWebSocketServer(this.wsServer);
+        ui.displayInitStep('WebRTC TTS components initialized', 'success');
+      }
+
       logger.info('✓ PACE server started successfully');
       logger.info(`WebSocket server listening on ws://${config.host}:${config.port}`);
 
