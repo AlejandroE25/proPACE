@@ -357,7 +357,7 @@ class PACEServer {
       // Initialize voice plugin WebRTC components (if voice plugin exists)
       if (this.voicePlugin) {
         ui.displayInitStep('Initializing WebRTC TTS components', 'start');
-        this.voicePlugin.setWebSocketServer(this.wsServer);
+        this.voicePlugin.setWebSocketServer(this.wsServer, this.eventBus);
         ui.displayInitStep('WebRTC TTS components initialized', 'success');
       }
 

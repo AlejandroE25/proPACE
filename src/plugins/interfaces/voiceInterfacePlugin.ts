@@ -144,7 +144,7 @@ export class VoiceInterfacePlugin extends BasePlugin {
   /**
    * Set WebSocket server instance (called from server initialization)
    */
-  setWebSocketServer(wsServer: PACEWebSocketServer): void {
+  setWebSocketServer(wsServer: PACEWebSocketServer, eventBus?: EventBus): void {
     this._wsServer = wsServer;
 
     // Initialize WebRTC components now that we have wsServer
@@ -154,7 +154,14 @@ export class VoiceInterfacePlugin extends BasePlugin {
 
     this.peerManager = new WebRTCPeerManager(iceServers, this.logger as any);
     this.signalingService = new SignalingService(wsServer, this.peerManager, this.logger as any);
-    this.audioProcessor = new AudioTrackProcessor(this.eventBus!, this.peerManager, this.logger as any);
+
+    // Use passed eventBus or try to get from BasePlugin (may not be set yet)
+    const busToUse = eventBus || (this as any)._eventBus;
+    if (!busToUse) {
+      throw new Error('EventBus not available - must be passed to setWebSocketServer()');
+    }
+
+    this.audioProcessor = new AudioTrackProcessor(busToUse, this.peerManager, this.logger as any);
 
     // Initialize services
     this.signalingService.initialize();
