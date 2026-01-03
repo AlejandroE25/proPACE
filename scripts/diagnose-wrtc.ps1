@@ -34,7 +34,10 @@ if (Test-Path "node_modules\wrtc") {
 # Try to require wrtc
 Write-Host ""
 Write-Host "Testing require('wrtc')..." -ForegroundColor Yellow
-$testScript = @"
+
+# Create temporary test script
+$testScriptPath = "test-wrtc-require.js"
+@'
 try {
   const wrtc = require('wrtc');
   console.log('✓ Successfully loaded wrtc');
@@ -44,14 +47,17 @@ try {
   console.log('  Error:', err.message);
   console.log('  Code:', err.code);
 }
-"@
+'@ | Set-Content $testScriptPath
 
-$testScript | node
+node $testScriptPath
+Remove-Item $testScriptPath
 
 # Try dynamic import (ESM)
 Write-Host ""
 Write-Host "Testing import('wrtc')..." -ForegroundColor Yellow
-$importTest = @"
+
+$importTestPath = "test-wrtc-import.mjs"
+@'
 import('wrtc')
   .then(wrtc => {
     console.log('✓ Successfully imported wrtc');
@@ -62,9 +68,11 @@ import('wrtc')
     console.log('  Error:', err.message);
     console.log('  Code:', err.code);
   });
-"@
+'@ | Set-Content $importTestPath
 
-$importTest | node --input-type=module
+node $importTestPath
+Start-Sleep -Seconds 1  # Give async import time to complete
+Remove-Item $importTestPath
 
 # Check npm logs
 Write-Host ""
