@@ -167,43 +167,24 @@ export class VoiceInterfacePlugin extends BasePlugin {
     this.signalingService.initialize();
     this.audioProcessor.initialize();
 
-    // Listen for new client connections to initiate WebRTC
-    this.setupClientConnectionHandler(wsServer);
+    // Register handler for new client connections
+    wsServer.setClientConnectedHandler((clientId: string) => {
+      this.handleClientConnected(clientId);
+    });
 
     this.logger.info('WebRTC TTS components initialized');
   }
 
   /**
-   * Setup handler to initiate WebRTC for new clients
+   * Handle new client connection - initiate WebRTC
    */
-  private setupClientConnectionHandler(wsServer: PACEWebSocketServer): void {
-    // Hook into WebSocket server's client tracking
-    // When a new client connects, initiate WebRTC connection
-    const originalSendToClient = wsServer.sendToClient.bind(wsServer);
+  private handleClientConnected(clientId: string): void {
+    this.logger.info(`New client connected, initiating WebRTC: ${clientId}`);
 
-    // Track which clients we've initiated WebRTC with
-    const initiatedClients = new Set<string>();
-
-    // Wrap sendToClient to detect first message to a client (connection)
-    wsServer.sendToClient = (clientId: string, message: string) => {
-      // Initiate WebRTC for new clients (but only once)
-      if (!initiatedClients.has(clientId)) {
-        initiatedClients.add(clientId);
-
-        // Initiate WebRTC connection asynchronously
-        this.signalingService!.initiateConnection(clientId).catch((error) => {
-          this.logger.error(`Failed to initiate WebRTC for ${clientId}:`, error);
-          initiatedClients.delete(clientId); // Allow retry
-        });
-
-        this.logger.debug(`Initiated WebRTC connection for new client: ${clientId}`);
-      }
-
-      // Call original sendToClient
-      return originalSendToClient(clientId, message);
-    };
-
-    this.logger.debug('Client connection handler setup complete');
+    // Initiate WebRTC connection asynchronously
+    this.signalingService!.initiateConnection(clientId).catch((error) => {
+      this.logger.error(`Failed to initiate WebRTC for ${clientId}:`, error);
+    });
   }
 
   /**
