@@ -150,8 +150,7 @@ describe('WebRTCClient', () => {
       expect(mockWebSocket.send).toHaveBeenCalled();
       const sentMessage = JSON.parse(mockWebSocket.send.mock.calls[0][0]);
       expect(sentMessage).toMatchObject({
-        type: 'webrtc-signal',
-        signal: 'answer',
+        type: 'webrtc-answer',
         sdp: 'mock-answer-sdp'
       });
     });
@@ -243,8 +242,8 @@ describe('WebRTCClient', () => {
 
       expect(mockWebSocket.send).toHaveBeenCalled();
       const sentMessage = JSON.parse(mockWebSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe('webrtc-signal');
-      expect(sentMessage.signal).toBe('ice');
+      expect(sentMessage.type).toBe('webrtc-ice');
+      expect(sentMessage.candidate).toBeDefined();
     });
   });
 

@@ -59,8 +59,10 @@
     ws.send = function(data) {
       try {
         const parsed = JSON.parse(data);
-        if (parsed.type === 'webrtc-signal') {
-          console.log('📤 Sending WebRTC signal:', parsed.signal);
+        if (parsed.type === 'webrtc-answer') {
+          console.log('📤 Sending WebRTC answer');
+        } else if (parsed.type === 'webrtc-ice') {
+          console.log('📤 Sending ICE candidate');
         }
       } catch(e) {}
       return originalSend.call(this, data);

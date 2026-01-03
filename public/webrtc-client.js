@@ -203,8 +203,7 @@ class WebRTCClient {
    */
   _sendAnswer(answer) {
     const message = {
-      type: 'webrtc-signal',
-      signal: 'answer',
+      type: 'webrtc-answer',
       sdp: answer.sdp,
       clientId: this.clientId
     };
@@ -217,8 +216,7 @@ class WebRTCClient {
    */
   _sendIceCandidate(candidate) {
     const message = {
-      type: 'webrtc-signal',
-      signal: 'ice',
+      type: 'webrtc-ice',
       candidate: candidate.toJSON(),
       clientId: this.clientId
     };
