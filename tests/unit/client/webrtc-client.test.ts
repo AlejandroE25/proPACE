@@ -156,9 +156,12 @@ describe('WebRTCClient', () => {
       });
     });
 
-    it('should handle ICE candidates', async () => {
+    it('should handle ICE candidates after remote description is set', async () => {
       const client = new WebRTCClient('test', mockWebSocket, mockStateChangeHandler);
       await client.initialize();
+
+      // Set remote description first
+      mockPeerConnection.remoteDescription = { sdp: 'mock-remote-sdp' };
 
       const iceMessage = {
         type: 'webrtc-ice',
@@ -167,6 +170,60 @@ describe('WebRTCClient', () => {
 
       await client.handleSignalingMessage(iceMessage);
 
+      expect(mockPeerConnection.addIceCandidate).toHaveBeenCalled();
+    });
+
+    it('should queue ICE candidates received before remote description', async () => {
+      const client = new WebRTCClient('test', mockWebSocket, mockStateChangeHandler);
+      await client.initialize();
+
+      // No remote description set
+      mockPeerConnection.remoteDescription = null;
+
+      const iceMessage = {
+        type: 'webrtc-ice',
+        candidate: { candidate: 'mock-ice-candidate', sdpMid: '0', sdpMLineIndex: 0 }
+      };
+
+      await client.handleSignalingMessage(iceMessage);
+
+      // Should NOT have been added yet
+      expect(mockPeerConnection.addIceCandidate).not.toHaveBeenCalled();
+      // Should be queued
+      expect(client.iceCandidateQueue.length).toBe(1);
+    });
+
+    it('should process queued ICE candidates after offer is handled', async () => {
+      const client = new WebRTCClient('test', mockWebSocket, mockStateChangeHandler);
+      await client.initialize();
+
+      // Simulate ICE candidate arriving before offer
+      mockPeerConnection.remoteDescription = null;
+      const iceMessage = {
+        type: 'webrtc-ice',
+        candidate: { candidate: 'mock-ice-candidate', sdpMid: '0', sdpMLineIndex: 0 }
+      };
+      await client.handleSignalingMessage(iceMessage);
+
+      expect(client.iceCandidateQueue.length).toBe(1);
+
+      // Now handle the offer
+      const offerMessage = {
+        type: 'webrtc-offer',
+        offer: { type: 'offer', sdp: 'mock-offer-sdp' },
+        clientId: 'test-client'
+      };
+
+      // Mock setRemoteDescription to update remoteDescription
+      mockPeerConnection.setRemoteDescription.mockImplementation((desc) => {
+        mockPeerConnection.remoteDescription = desc;
+        return Promise.resolve();
+      });
+
+      await client.handleSignalingMessage(offerMessage);
+
+      // Queue should be processed and cleared
+      expect(client.iceCandidateQueue.length).toBe(0);
       expect(mockPeerConnection.addIceCandidate).toHaveBeenCalled();
     });
 

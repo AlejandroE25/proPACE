@@ -2,7 +2,7 @@
 # Update proPACE on remote Windows server (handles package-lock conflicts)
 
 # Configuration
-SERVER_USER="${SERVER_USER:-CDN4LIFE}"
+SERVER_USER="${SERVER_USER:-ajesc}"
 SERVER_HOST="${SERVER_HOST:-10.0.0.69}"
 
 echo "🔄 Updating proPACE on ${SERVER_HOST}..."

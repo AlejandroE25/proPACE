@@ -15,6 +15,7 @@ class WebRTCClient {
     this.retryCount = 0;
     this.maxRetries = 3;
     this.retryDelay = 2000; // Start with 2 seconds
+    this.iceCandidateQueue = []; // Queue for early ICE candidates
 
     console.log('[WebRTC] Client initialized');
   }
@@ -148,6 +149,19 @@ class WebRTCClient {
     // Send answer back to server
     this._sendAnswer(answer);
     console.log('[WebRTC] Answer sent to server');
+
+    // Process any queued ICE candidates
+    if (this.iceCandidateQueue.length > 0) {
+      console.log(`[WebRTC] Processing ${this.iceCandidateQueue.length} queued ICE candidates`);
+      for (const candidate of this.iceCandidateQueue) {
+        try {
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (error) {
+          console.error('[WebRTC] Error adding queued ICE candidate:', error);
+        }
+      }
+      this.iceCandidateQueue = [];
+    }
   }
 
   /**
@@ -156,9 +170,22 @@ class WebRTCClient {
   async _handleIceCandidate(message) {
     if (message.candidate) {
       console.log('[WebRTC] Received ICE candidate from server');
-      await this.peerConnection.addIceCandidate(
-        new RTCIceCandidate(message.candidate)
-      );
+
+      // Check if remote description is set
+      if (!this.peerConnection.remoteDescription) {
+        console.log('[WebRTC] Queueing ICE candidate (no remote description yet)');
+        this.iceCandidateQueue.push(message.candidate);
+        return;
+      }
+
+      // Add candidate immediately if remote description is already set
+      try {
+        await this.peerConnection.addIceCandidate(
+          new RTCIceCandidate(message.candidate)
+        );
+      } catch (error) {
+        console.error('[WebRTC] Error adding ICE candidate:', error);
+      }
     }
   }
 
