@@ -61,7 +61,7 @@ class WebRTCClient {
     this.peerConnection.oniceconnectionstatechange = () => {
       console.log('[WebRTC] ICE connection state:', this.peerConnection.iceConnectionState);
 
-      if (this.peerConnection.iceConnectionState === 'connected') {
+      if (this.peerConnection.iceConnectionState === 'connected' || this.peerConnection.iceConnectionState === 'completed') {
         this.isConnected = true;
         this.retryCount = 0; // Reset retry count on successful connection
         this.onStateChange('webrtc-connected');
@@ -71,6 +71,11 @@ class WebRTCClient {
       } else if (this.peerConnection.iceConnectionState === 'disconnected') {
         this.onStateChange('webrtc-disconnected');
       }
+    };
+
+    // Handle connection state changes
+    this.peerConnection.onconnectionstatechange = () => {
+      console.log('[WebRTC] Connection state:', this.peerConnection.connectionState);
     };
 
     // Handle data channel from server
