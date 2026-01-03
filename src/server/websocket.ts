@@ -27,8 +27,8 @@ export class PACEWebSocketServer {
   private isServerRunning: boolean = false;
   private options: WebSocketServerOptions;
   private onMessageHandler?: (clientId: string, message: string) => Promise<string>;
-  private onClientConnectedHandler?: (clientId: string) => void;
-  private onClientDisconnectedHandler?: (clientId: string) => void;
+  private onClientConnectedHandlers: Array<(clientId: string) => void> = [];
+  private onClientDisconnectedHandlers: Array<(clientId: string) => void> = [];
   private onWebRTCSignalingHandler?: (clientId: string, message: any) => Promise<void>;
   private agentOrchestrator?: AgentOrchestrator;
   private weatherService?: WeatherService;
@@ -83,17 +83,17 @@ export class PACEWebSocketServer {
   }
 
   /**
-   * Set client connected handler
+   * Add client connected handler (supports multiple handlers)
    */
   setClientConnectedHandler(handler: (clientId: string) => void): void {
-    this.onClientConnectedHandler = handler;
+    this.onClientConnectedHandlers.push(handler);
   }
 
   /**
-   * Set client disconnected handler
+   * Add client disconnected handler (supports multiple handlers)
    */
   setClientDisconnectedHandler(handler: (clientId: string) => void): void {
-    this.onClientDisconnectedHandler = handler;
+    this.onClientDisconnectedHandlers.push(handler);
   }
 
   /**
@@ -343,9 +343,9 @@ export class PACEWebSocketServer {
     this.clients.set(clientId, ws);
     logger.info(`New client connected: ${clientId}`);
 
-    // Notify handler
-    if (this.onClientConnectedHandler) {
-      this.onClientConnectedHandler(clientId);
+    // Notify all handlers
+    for (const handler of this.onClientConnectedHandlers) {
+      handler(clientId);
     }
 
     // Send welcome message
@@ -516,9 +516,9 @@ export class PACEWebSocketServer {
     this.clients.delete(clientId);
     logger.info(`Client disconnected: ${clientId}`);
 
-    // Notify handler
-    if (this.onClientDisconnectedHandler) {
-      this.onClientDisconnectedHandler(clientId);
+    // Notify all handlers
+    for (const handler of this.onClientDisconnectedHandlers) {
+      handler(clientId);
     }
   }
 
