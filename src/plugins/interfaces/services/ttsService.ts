@@ -15,6 +15,7 @@
 import OpenAI from 'openai';
 import { EventBus } from '../../../events/eventBus.js';
 import { EventType, EventPriority } from '../../../events/types.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * TTS configuration
@@ -86,10 +87,12 @@ export class TTSService {
     abortSignal?: AbortSignal
   ): Promise<TTSResult> {
     this.stats.totalGenerations++;
+    logger.info(`Starting TTS generation for ${clientId || 'unknown'}: "${text.substring(0, 50)}..."`);
 
     // Validate input
     if (!text || text.trim().length === 0) {
       this.stats.failedGenerations++;
+      logger.warn(`TTS generation failed: empty text for ${clientId}`);
       return {
         success: false,
         responseId,
@@ -118,12 +121,14 @@ export class TTSService {
       await this.publishStartedEvent(responseId, truncatedText, clientId);
 
       // Generate audio
+      logger.info(`Calling OpenAI TTS API with model=${this.model}, voice=${this.voice}`);
       const response = await this.openai.audio.speech.create({
         model: this.model,
         voice: this.voice as any,
         input: truncatedText,
         response_format: 'mp3'
       });
+      logger.info(`OpenAI TTS API call completed for ${clientId}`);
 
       // Check if aborted during generation
       if (abortSignal?.aborted) {
@@ -138,7 +143,9 @@ export class TTSService {
 
       // Stream audio in chunks
       const audioBuffer = response.body as any;
+      logger.info(`Streaming audio chunks for ${clientId}`);
       const audioBytes = await this.streamAudioChunks(audioBuffer, responseId, clientId, abortSignal);
+      logger.info(`Streamed ${audioBytes} bytes of audio for ${clientId}`);
 
       // Check if aborted during streaming
       if (abortSignal?.aborted) {
@@ -157,6 +164,7 @@ export class TTSService {
       this.stats.successfulGenerations++;
       this.stats.totalAudioBytes += audioBytes;
 
+      logger.info(`TTS generation successful for ${clientId}: ${audioBytes} bytes`);
       return {
         success: true,
         responseId,
@@ -164,6 +172,7 @@ export class TTSService {
       };
 
     } catch (error: any) {
+      logger.error(`TTS generation error for ${clientId}:`, error);
       // Check if it was an abort
       if (abortSignal?.aborted || error.name === 'AbortError') {
         this.stats.interruptedGenerations++;
@@ -178,6 +187,7 @@ export class TTSService {
       // Handle rate limiting
       if (error.status === 429) {
         this.stats.failedGenerations++;
+        logger.warn(`TTS rate limit exceeded for ${clientId}`);
         return {
           success: false,
           responseId,
@@ -187,6 +197,7 @@ export class TTSService {
 
       // General error
       this.stats.failedGenerations++;
+      logger.error(`TTS general error for ${clientId}: ${error.message || 'Unknown error'}`);
       return {
         success: false,
         responseId,
