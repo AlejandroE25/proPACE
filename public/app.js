@@ -270,8 +270,8 @@ inputline.addEventListener('keydown', function(e) {
             handleWebRTCStateChange('playback-interrupted');
         }
 
-        // Check if WebSocket is ready before sending
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        // Check if WebSocket is ready before sending (readyState 1 = OPEN)
+        if (ws && ws.readyState === 1) {
             ws.send(inputline.value);
             iSentTheMessage = true;
             inputline.value = "";
