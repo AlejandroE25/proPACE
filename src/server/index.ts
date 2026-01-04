@@ -139,8 +139,9 @@ class PACEServer {
     await this.pluginRegistry.register(diagnosticPlugin);
     await this.pluginRegistry.register(recoveryPlugin);
     await this.pluginRegistry.register(globalContextPlugin);
-    // VoiceInterfacePlugin extends BasePlugin (old plugin system) but is compatible with new registry
-    await this.pluginRegistry.register(this.voicePlugin as any);
+    // NOTE: VoiceInterfacePlugin is NOT registered here - it's initialized manually
+    // later in the startup sequence because it needs special initialization with
+    // EventBus, DataPipeline, and specific settings that the PluginRegistry doesn't provide
 
     // Give diagnostic plugin access to the registry (needed for SystemDiagnostics)
     diagnosticPlugin.setPluginRegistry(this.pluginRegistry);
