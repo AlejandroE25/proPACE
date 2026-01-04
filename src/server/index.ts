@@ -153,6 +153,7 @@ class PACEServer {
     this.agentOrchestrator = new AgentOrchestrator(
       config.anthropicApiKey,
       this.pluginRegistry,
+      this.eventBus,
       './data/audit.db',
       config.agentPlanningModel,
       config.updateMonitor

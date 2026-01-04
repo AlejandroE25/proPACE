@@ -27,6 +27,8 @@ import { RoutingService } from '../services/routingService.js';
 import { ClaudeClient } from '../clients/claudeClient.js';
 import { SubsystemType } from '../types/index.js';
 import { UpdateMonitorConfig } from '../types/update.js';
+import { EventBus } from '../events/eventBus.js';
+import { EventType, EventPriority } from '../events/types.js';
 import {
   PlanningContext,
   AuditEventType,
@@ -53,6 +55,7 @@ export class AgentOrchestrator {
   private suggestionEngine: SuggestionEngine;
   private routingService: RoutingService;
   private claudeClient: ClaudeClient;
+  private eventBus: EventBus;
 
   /** Conversation history per client */
   private conversationHistory: Map<
@@ -66,11 +69,13 @@ export class AgentOrchestrator {
   constructor(
     anthropicApiKey: string,
     pluginRegistry: PluginRegistry,
+    eventBus: EventBus,
     auditDbPath: string = './data/audit.db',
     planningModel: string = 'claude-sonnet-4-20250514',
     updateMonitorConfig?: UpdateMonitorConfig
   ) {
     this.pluginRegistry = pluginRegistry;
+    this.eventBus = eventBus;
     this.conversationHistory = new Map();
     this.lastInteractionId = new Map();
 
@@ -408,10 +413,25 @@ export class AgentOrchestrator {
 
       // FAST PATH: Check if simple plugin can handle this query
       // This prevents creating tasks for simple weather/news/wolfram queries
-      const fastPathResponse = await this.tryFastPathRouting(message, history, correlationId, clientId);
-      if (fastPathResponse) {
+      const fastPathResult = await this.tryFastPathRouting(message, history, correlationId, clientId);
+      if (fastPathResult) {
         logger.info('Query handled via fast-path plugin routing', { message });
-        return fastPathResponse;
+
+        // Publish RESPONSE_GENERATED event for voice plugin and other subscribers
+        await this.eventBus.publish({
+          type: EventType.RESPONSE_GENERATED,
+          priority: EventPriority.HIGH,
+          source: 'agent-orchestrator',
+          payload: {
+            clientId,
+            message,
+            response: fastPathResult.response,
+            subsystem: fastPathResult.subsystem,
+            timestamp: new Date()
+          }
+        });
+
+        return fastPathResult.response;
       }
 
       // Check if this is a simple query that can be handled directly by Claude
@@ -431,6 +451,20 @@ export class AgentOrchestrator {
           { role: 'user', content: message, timestamp: new Date() },
           { role: 'assistant', content: response, timestamp: new Date() }
         );
+
+        // Publish RESPONSE_GENERATED event for voice plugin and other subscribers
+        await this.eventBus.publish({
+          type: EventType.RESPONSE_GENERATED,
+          priority: EventPriority.HIGH,
+          source: 'agent-orchestrator',
+          payload: {
+            clientId,
+            message,
+            response,
+            subsystem: 'claude',
+            timestamp: new Date()
+          }
+        });
 
         return response;
       }
@@ -608,6 +642,20 @@ export class AgentOrchestrator {
           }
         })();
 
+        // Publish RESPONSE_GENERATED event for voice plugin and other subscribers
+        await this.eventBus.publish({
+          type: EventType.RESPONSE_GENERATED,
+          priority: EventPriority.HIGH,
+          source: 'agent-orchestrator',
+          payload: {
+            clientId,
+            message: query,
+            response: result.finalAnswer,
+            subsystem: routedSubsystem,
+            timestamp: new Date()
+          }
+        });
+
         // Emit result for WebSocket to send
         this.executor.emit('task_completed', {
           taskId,
@@ -783,14 +831,14 @@ export class AgentOrchestrator {
 
   /**
    * Try fast-path routing to plugins for simple queries
-   * Returns response if handled, null if should fall through to task creation
+   * Returns response and subsystem if handled, null if should fall through to task creation
    */
   private async tryFastPathRouting(
     message: string,
     history: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>,
     correlationId: string,
     clientId: string
-  ): Promise<string | null> {
+  ): Promise<{ response: string; subsystem: SubsystemType } | null> {
     const startTime = Date.now();
 
     // Get routing decision from RoutingService (uses Haiku + caching)
@@ -857,7 +905,7 @@ export class AgentOrchestrator {
           `Fast-path executed ${routingDecision.subsystem} in ${elapsed}ms (cached: ${routingDecision.cached})`
         );
 
-        return response;
+        return { response, subsystem: routingDecision.subsystem };
       }
     }
 
