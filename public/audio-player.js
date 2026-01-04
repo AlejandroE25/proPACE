@@ -112,6 +112,19 @@ class AudioPlayer {
     }
 
     try {
+      // Stop any currently playing audio (interrupt)
+      if (this.isPlaying) {
+        console.log('[AudioPlayer] Interrupting previous playback');
+        this.currentSourceNodes.forEach(node => {
+          try {
+            node.stop();
+          } catch (e) {
+            // Node might already be stopped
+          }
+        });
+        this.currentSourceNodes = [];
+      }
+
       // Concatenate all chunks into a single ArrayBuffer
       const totalLength = this.pendingChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
       const completeMP3 = new Uint8Array(totalLength);
@@ -131,12 +144,18 @@ class AudioPlayer {
       const audioBuffer = await this.audioContext.decodeAudioData(completeMP3.buffer);
       console.log(`[AudioPlayer] Decoded ${audioBuffer.duration.toFixed(2)}s of audio`);
 
+      // Reset state and play from beginning
+      this.isPlaying = false;
+      this.nextStartTime = 0;
+
       // Play the decoded audio
       this._scheduleBuffer(audioBuffer);
 
     } catch (error) {
       console.error('[AudioPlayer] Failed to decode buffered MP3:', error);
       this.pendingChunks = []; // Clear buffer on error
+      this.isPlaying = false;
+      this.nextStartTime = 0;
     }
   }
 
@@ -205,6 +224,12 @@ class AudioPlayer {
     if (waitTime > 0) {
       await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
     }
+
+    // Reset state for next TTS session
+    this.isPlaying = false;
+    this.nextStartTime = 0;
+    this.pendingChunks = [];
+    console.log('[AudioPlayer] State reset for next TTS session');
 
     // Dispatch event for UI updates
     if (window.handleWebRTCStateChange) {
