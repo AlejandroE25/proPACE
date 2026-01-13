@@ -129,7 +129,8 @@ export class AgentOrchestrator {
     );
 
     // Initialize routing service for fast-path plugin routing
-    this.routingService = new RoutingService(anthropicApiKey);
+    // Pass plugin registry for dynamic subsystem discovery
+    this.routingService = new RoutingService(anthropicApiKey, pluginRegistry);
 
     // Initialize Claude client for direct conversational responses
     this.claudeClient = new ClaudeClient(anthropicApiKey);

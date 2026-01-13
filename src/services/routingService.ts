@@ -3,26 +3,26 @@ import { RoutingDecision, SubsystemType } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { RoutingCache } from '../utils/routingCache.js';
 import { config } from '../config/index.js';
+import type { PluginRegistry } from '../plugins/pluginRegistry.js';
 
 /**
  * Intelligent Routing Service
  * Uses Claude 3.5 Haiku for fast, accurate subsystem routing decisions
+ * Dynamically builds subsystem list from registered plugins
  */
 export class RoutingService {
   private client: Anthropic;
   private cache: RoutingCache;
   private model: string;
   private confidenceThreshold: number;
+  private pluginRegistry?: PluginRegistry;
+  private validSubsystems: Set<string>;
 
-  // Optimized system prompt for fast routing
-  private readonly ROUTING_PROMPT = `You are a routing classifier for a conversational AI system. Analyze the user's message and determine which subsystem should handle it.
+  // Base routing prompt template - subsystems will be injected dynamically
+  private readonly ROUTING_PROMPT_TEMPLATE = `You are a routing classifier for a conversational AI system. Analyze the user's message and determine which subsystem should handle it.
 
 SUBSYSTEMS:
-- weather: Temperature, forecast, weather conditions (PACE's weather sensor/plugin)
-- news: Headlines, current events, "what's happening", latest news (PACE's news sensor/plugin)
-- wolfram: ONLY pure math calculations, equations, scientific constants, unit conversions, population statistics
-- google_search: External factual knowledge - "how do", "how to", "what is", "who is", "explain", historical facts, recipes, tutorials, general knowledge NOT covered by PACE's sensors
-- claude: General conversation, opinions, jokes, creative tasks, advice, personal questions
+{SUBSYSTEMS}
 
 ROUTING PRIORITY:
 1. If query is about weather/news/pure-math → Use PACE's built-in sensors (weather/news/wolfram)
@@ -33,28 +33,84 @@ CRITICAL: Respond with ONLY a JSON object in this exact format:
 {"subsystem":"<name>","confidence":<0-1>}
 
 Examples:
-"What's the weather?" → {"subsystem":"weather","confidence":0.95}
-"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.95}
-"Tell me the news" → {"subsystem":"news","confidence":0.95}
-"How do you make coffee?" → {"subsystem":"google_search","confidence":0.9}
-"What is quantum computing?" → {"subsystem":"google_search","confidence":0.9}
-"Explain photosynthesis" → {"subsystem":"google_search","confidence":0.85}
-"How are you?" → {"subsystem":"claude","confidence":0.9}
-"Tell me a joke" → {"subsystem":"claude","confidence":0.95}
-"What's 2+2 and how's the weather?" → {"subsystem":"claude","confidence":0.7}`;
+{EXAMPLES}`;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, pluginRegistry?: PluginRegistry) {
     this.client = new Anthropic({
       apiKey: apiKey || config.anthropicApiKey,
     });
     this.cache = new RoutingCache(config.routingCacheTTL);
     this.model = config.routingModel;
     this.confidenceThreshold = config.routingConfidenceThreshold;
+    this.pluginRegistry = pluginRegistry;
+    this.validSubsystems = new Set(['claude']); // Claude is always valid
+
+    // Build initial subsystem list
+    this.updateSubsystemList();
 
     // Periodic cache cleanup
     setInterval(() => {
       this.cache.cleanExpired();
     }, 60000); // Every minute
+  }
+
+  /**
+   * Update the list of valid subsystems from the plugin registry
+   */
+  private updateSubsystemList(): void {
+    if (!this.pluginRegistry) {
+      // Fallback to hardcoded list if no registry
+      this.validSubsystems = new Set(['weather', 'news', 'wolfram', 'google_search', 'claude']);
+      return;
+    }
+
+    // Always include claude
+    this.validSubsystems = new Set(['claude']);
+
+    // Add all tools from registry as valid subsystems
+    const tools = this.pluginRegistry.getAllTools();
+    for (const tool of tools) {
+      this.validSubsystems.add(tool.name);
+    }
+
+    logger.debug(`Updated valid subsystems: ${Array.from(this.validSubsystems).join(', ')}`);
+  }
+
+  /**
+   * Build the routing prompt dynamically based on registered plugins
+   */
+  private buildRoutingPrompt(): string {
+    // Static subsystem descriptions (could be extracted from plugin metadata in the future)
+    const subsystemDescriptions: Record<string, string> = {
+      weather: 'Temperature, forecast, weather conditions (PACE\'s weather sensor/plugin)',
+      news: 'Headlines, current events, "what\'s happening", latest news (PACE\'s news sensor/plugin)',
+      wolfram: 'ONLY pure math calculations, equations, scientific constants, unit conversions, population statistics',
+      google_search: 'External factual knowledge - "how do", "how to", "what is", "who is", "explain", historical facts, recipes, tutorials, general knowledge NOT covered by PACE\'s sensors',
+      claude: 'General conversation, opinions, jokes, creative tasks, advice, personal questions'
+    };
+
+    const examples: Record<string, string> = {
+      weather: '"What\'s the weather?" → {"subsystem":"weather","confidence":0.95}',
+      news: '"Tell me the news" → {"subsystem":"news","confidence":0.95}',
+      wolfram: '"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.95}',
+      google_search: '"How do you make coffee?" → {"subsystem":"google_search","confidence":0.9}\n"What is quantum computing?" → {"subsystem":"google_search","confidence":0.9}\n"Explain photosynthesis" → {"subsystem":"google_search","confidence":0.85}',
+      claude: '"How are you?" → {"subsystem":"claude","confidence":0.9}\n"Tell me a joke" → {"subsystem":"claude","confidence":0.95}\n"What\'s 2+2 and how\'s the weather?" → {"subsystem":"claude","confidence":0.7}'
+    };
+
+    // Build subsystem list
+    const subsystemLines = Array.from(this.validSubsystems)
+      .map(name => `- ${name}: ${subsystemDescriptions[name] || 'Custom plugin tool'}`)
+      .join('\n');
+
+    // Build examples
+    const exampleLines = Array.from(this.validSubsystems)
+      .filter(name => examples[name])
+      .map(name => examples[name])
+      .join('\n');
+
+    return this.ROUTING_PROMPT_TEMPLATE
+      .replace('{SUBSYSTEMS}', subsystemLines)
+      .replace('{EXAMPLES}', exampleLines);
   }
 
   /**
@@ -125,7 +181,7 @@ Examples:
       model: this.model,
       max_tokens: 50, // Minimal tokens needed for JSON response
       temperature: 0, // Deterministic routing
-      system: this.ROUTING_PROMPT,
+      system: this.buildRoutingPrompt(), // Dynamic prompt based on registered plugins
       messages: [
         {
           role: 'user',
@@ -184,7 +240,7 @@ Examples:
    * Validate subsystem type
    */
   private isValidSubsystem(subsystem: string): subsystem is SubsystemType {
-    return ['weather', 'news', 'wolfram', 'google_search', 'claude'].includes(subsystem);
+    return this.validSubsystems.has(subsystem);
   }
 
   /**
