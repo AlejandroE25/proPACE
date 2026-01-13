@@ -184,7 +184,7 @@ Examples:
    * Validate subsystem type
    */
   private isValidSubsystem(subsystem: string): subsystem is SubsystemType {
-    return ['weather', 'news', 'wolfram', 'claude'].includes(subsystem);
+    return ['weather', 'news', 'wolfram', 'google_search', 'claude'].includes(subsystem);
   }
 
   /**
@@ -196,6 +196,7 @@ Examples:
     if (lower.includes('weather')) return 'weather';
     if (lower.includes('news')) return 'news';
     if (lower.includes('wolfram')) return 'wolfram';
+    if (lower.includes('google') || lower.includes('search')) return 'google_search';
 
     return 'claude'; // Safe default
   }
