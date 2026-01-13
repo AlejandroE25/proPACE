@@ -12,6 +12,12 @@ class AudioPlayer {
     this.currentSourceNodes = [];
     this.pendingChunks = []; // Buffer for MP3 chunks until TTS_END
 
+    // Waveform visualizer
+    this.analyser = null;
+    this.waveformCanvas = null;
+    this.waveformCtx = null;
+    this.animationId = null;
+
     console.log('[AudioPlayer] Initialized');
   }
 
@@ -25,12 +31,27 @@ class AudioPlayer {
         sampleRate: 48000
       });
 
+      // Create analyser for waveform visualization
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 128; // Small FFT for 64 frequency bars
+      this.analyser.smoothingTimeConstant = 0.7; // Smooth animation
+      this.analyser.connect(this.audioContext.destination);
+
+      // Setup canvas for waveform
+      this.waveformCanvas = document.getElementById('waveform-canvas');
+      if (this.waveformCanvas) {
+        this.waveformCtx = this.waveformCanvas.getContext('2d');
+        // Set canvas resolution
+        this.waveformCanvas.width = 400;
+        this.waveformCanvas.height = 80;
+      }
+
       // Resume context if suspended (browser autoplay policy)
       if (this.audioContext.state === 'suspended') {
         console.log('[AudioPlayer] AudioContext suspended, will resume on user interaction');
       }
 
-      console.log('[AudioPlayer] AudioContext created, state:', this.audioContext.state);
+      console.log('[AudioPlayer] AudioContext created with waveform visualizer');
       return true;
     } catch (error) {
       console.error('[AudioPlayer] Failed to initialize AudioContext:', error);
@@ -187,7 +208,8 @@ class AudioPlayer {
     // Create source node
     const sourceNode = this.audioContext.createBufferSource();
     sourceNode.buffer = audioBuffer;
-    sourceNode.connect(this.audioContext.destination);
+    // Connect through analyser for waveform visualization
+    sourceNode.connect(this.analyser);
 
     // Schedule playback
     sourceNode.start(this.nextStartTime);
@@ -196,6 +218,11 @@ class AudioPlayer {
     // Track source node
     this.currentSourceNodes.push(sourceNode);
 
+    // Start waveform visualization
+    if (this.currentSourceNodes.length === 1) {
+      this.startWaveformVisualization();
+    }
+
     // Clean up when finished
     sourceNode.onended = () => {
       const index = this.currentSourceNodes.indexOf(sourceNode);
@@ -203,10 +230,11 @@ class AudioPlayer {
         this.currentSourceNodes.splice(index, 1);
       }
 
-      // If no more chunks are playing, reset state
+      // If no more chunks are playing, reset state and stop visualization
       if (this.currentSourceNodes.length === 0) {
         this.isPlaying = false;
         this.nextStartTime = 0;
+        this.stopWaveformVisualization();
       }
     };
 
@@ -257,10 +285,81 @@ class AudioPlayer {
     this.isPlaying = false;
     this.nextStartTime = 0;
 
+    // Stop waveform visualization
+    this.stopWaveformVisualization();
+
     // Dispatch event for UI updates
     if (window.handleWebRTCStateChange) {
       window.handleWebRTCStateChange('playback-stopped');
     }
+  }
+
+  /**
+   * Start waveform visualization
+   */
+  startWaveformVisualization() {
+    if (!this.waveformCanvas || !this.analyser) return;
+
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const draw = () => {
+      this.animationId = requestAnimationFrame(draw);
+
+      // Get frequency data
+      this.analyser.getByteFrequencyData(dataArray);
+
+      const ctx = this.waveformCtx;
+      const canvas = this.waveformCanvas;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate bar width
+      const barCount = 32; // Show 32 bars
+      const barWidth = canvas.width / barCount;
+      const barGap = 2;
+
+      // Draw frequency bars
+      for (let i = 0; i < barCount; i++) {
+        // Sample from frequency data
+        const dataIndex = Math.floor(i * (bufferLength / barCount));
+        const value = dataArray[dataIndex];
+
+        // Normalize height (0-255 → 0-canvas.height)
+        const barHeight = (value / 255) * canvas.height * 0.8;
+        const x = i * barWidth;
+        const y = (canvas.height - barHeight) / 2;
+
+        // PACE gold color with gradient
+        const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+        gradient.addColorStop(0, 'rgba(252, 190, 36, 0.8)');
+        gradient.addColorStop(1, 'rgba(252, 190, 36, 0.3)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x + barGap / 2, y, barWidth - barGap, barHeight);
+      }
+    };
+
+    draw();
+    console.log('[AudioPlayer] Waveform visualization started');
+  }
+
+  /**
+   * Stop waveform visualization
+   */
+  stopWaveformVisualization() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+
+    // Clear canvas
+    if (this.waveformCtx && this.waveformCanvas) {
+      this.waveformCtx.clearRect(0, 0, this.waveformCanvas.width, this.waveformCanvas.height);
+    }
+
+    console.log('[AudioPlayer] Waveform visualization stopped');
   }
 
   /**
