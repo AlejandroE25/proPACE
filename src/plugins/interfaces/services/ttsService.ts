@@ -287,6 +287,7 @@ export class TTSService {
    * Publish TTS_COMPLETED event
    */
   private async publishCompletedEvent(responseId: string, totalBytes: number, clientId?: string): Promise<void> {
+    logger.info(`[TTS] Publishing TTS_COMPLETED event for ${clientId}: ${totalBytes} bytes, responseId: ${responseId}`);
     await this.eventBus.publish({
       type: EventType.TTS_COMPLETED,
       priority: EventPriority.HIGH,
@@ -298,6 +299,7 @@ export class TTSService {
         timestamp: new Date()
       }
     });
+    logger.info(`[TTS] TTS_COMPLETED event published successfully for ${clientId}`);
   }
 
   /**

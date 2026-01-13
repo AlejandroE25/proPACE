@@ -156,10 +156,10 @@ export class AudioTrackProcessor extends EventEmitter {
    * Handle TTS_COMPLETED event
    */
   private async handleTTSCompleted(event: Event): Promise<void> {
-    const { clientId, responseId, totalBytes, duration } = event.payload;
+    const { clientId, responseId, totalBytes } = event.payload;
 
     this.logger.info(
-      `TTS completed for ${clientId}: ${totalBytes} bytes in ${duration}ms (response ${responseId})`
+      `[AudioTrackProcessor] TTS_COMPLETED received for ${clientId}: ${totalBytes} bytes (response ${responseId})`
     );
 
     // Flush any remaining queued chunks
@@ -167,9 +167,11 @@ export class AudioTrackProcessor extends EventEmitter {
 
     // Send end marker
     try {
+      this.logger.info(`[AudioTrackProcessor] Sending TTS_END marker to ${clientId}`);
       await this.peerManager.sendAudioChunk(clientId, this.END_MARKER);
+      this.logger.info(`[AudioTrackProcessor] TTS_END marker sent successfully to ${clientId}`);
     } catch (error) {
-      this.logger.error(`Failed to send end marker to ${clientId}:`, error);
+      this.logger.error(`[AudioTrackProcessor] Failed to send end marker to ${clientId}:`, error);
     }
 
     // Mark as not streaming
