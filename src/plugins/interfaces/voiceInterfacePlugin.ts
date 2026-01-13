@@ -220,7 +220,7 @@ export class VoiceInterfacePlugin extends BasePlugin {
 
     const eventBus = this['_eventBus'] as EventBus;
 
-    // Subscribe to RESPONSE_GENERATED events for TTS generation
+    // Subscribe to RESPONSE_GENERATED events for TTS generation (non-streaming)
     eventBus.subscribe([EventType.RESPONSE_GENERATED], {
       id: `${this.metadata.id}-response-handler`,
       handle: this.handleResponseGenerated.bind(this),
@@ -228,6 +228,15 @@ export class VoiceInterfacePlugin extends BasePlugin {
       priority: 1
     });
     logger.info('Voice plugin subscribed to RESPONSE_GENERATED events');
+
+    // Subscribe to RESPONSE_CHUNK events for streaming TTS
+    eventBus.subscribe([EventType.RESPONSE_CHUNK], {
+      id: `${this.metadata.id}-chunk-handler`,
+      handle: this.handleResponseChunk.bind(this),
+      canHandle: () => true,
+      priority: 1
+    });
+    logger.info('Voice plugin subscribed to RESPONSE_CHUNK events');
 
     // Subscribe to USER_MESSAGE events for interruption detection
     eventBus.subscribe([EventType.USER_MESSAGE], {
@@ -273,6 +282,49 @@ export class VoiceInterfacePlugin extends BasePlugin {
       // Generate TTS audio (this will emit TTS_CHUNK events)
       if (this.ttsService) {
         await this.ttsService.generate(response, responseId, clientId);
+      }
+
+    } catch (error) {
+      this.recordError(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Handle RESPONSE_CHUNK event - trigger streaming TTS for sentence
+   */
+  private async handleResponseChunk(event: Event): Promise<void> {
+    logger.info('Voice plugin received RESPONSE_CHUNK event', { clientId: event.payload.clientId });
+    try {
+      const { clientId, chunk, isComplete } = event.payload;
+
+      if (!clientId || !chunk) {
+        return; // Invalid payload
+      }
+
+      // Track client session
+      let session = this.activeClients.get(clientId);
+      if (!session) {
+        session = {
+          clientId,
+          isPlaying: false,
+          lastActivity: new Date()
+        };
+        this.activeClients.set(clientId, session);
+      }
+
+      // Update session
+      session.lastActivity = new Date();
+
+      // Generate TTS for this sentence chunk
+      const responseId = randomUUID();
+      session.responseId = responseId;
+      session.isPlaying = true;
+
+      logger.debug(`[Streaming TTS] Generating audio for chunk (${chunk.length} chars, isComplete: ${isComplete})`);
+
+      // Generate TTS audio for this chunk (this will emit TTS_CHUNK events)
+      if (this.ttsService) {
+        await this.ttsService.generate(chunk, responseId, clientId);
       }
 
     } catch (error) {

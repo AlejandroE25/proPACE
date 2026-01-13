@@ -118,14 +118,14 @@ export class ClaudeClient {
 
   /**
    * Generate a streaming response from Claude with permanent butler personality
-   * Returns an async iterator
+   * Returns an async generator
    * Note: systemPrompt parameter is now ignored - butler mode is always active
    */
   async *generateStreamingResponse(
     message: string,
     conversationHistory: ConversationMessage[] = [],
     _systemPrompt?: string // Ignored - kept for backward compatibility
-  ): AsyncIterator<string> {
+  ): AsyncGenerator<string> {
     try {
       const messages: Anthropic.MessageParam[] = [
         ...conversationHistory.map((msg) => ({
@@ -140,7 +140,7 @@ export class ClaudeClient {
 
       const stream = await this.client.messages.create({
         model: this.model,
-        max_tokens: 1024,
+        max_tokens: 300, // Match non-streaming limit for concise responses
         temperature: this.temperature,
         system: BUTLER_SYSTEM_PROMPT, // Always use butler personality
         messages,

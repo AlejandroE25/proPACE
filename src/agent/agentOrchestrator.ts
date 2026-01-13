@@ -438,14 +438,19 @@ export class AgentOrchestrator {
       // Check if this is a simple query that can be handled directly by Claude
       // to avoid unnecessary task planning overhead
       if (this.isSimpleQuery(message)) {
-        logger.info('Simple query detected - using direct Claude response', { message });
+        logger.info('Simple query detected - using streaming Claude response', { message });
 
         const conversationHistory = history.map(msg => ({
           role: msg.role,
           content: msg.content
         }));
 
-        const response = await this.claudeClient.generateResponse(message, conversationHistory);
+        // Use streaming response with sentence-level TTS
+        const response = await this.generateStreamingResponseWithSentenceTTS(
+          message,
+          conversationHistory,
+          clientId
+        );
 
         // Add to history
         history.push(
@@ -453,7 +458,7 @@ export class AgentOrchestrator {
           { role: 'assistant', content: response, timestamp: new Date() }
         );
 
-        // Publish RESPONSE_GENERATED event for voice plugin and other subscribers
+        // Publish final RESPONSE_GENERATED event for completeness
         await this.eventBus.publish({
           type: EventType.RESPONSE_GENERATED,
           priority: EventPriority.HIGH,
@@ -1075,6 +1080,79 @@ export class AgentOrchestrator {
     // - Greetings ("hello", "hi")
     // - Follow-up conversation
     return true;
+  }
+
+  /**
+   * Generate streaming response with sentence-level TTS
+   * Buffers text into complete sentences and publishes RESPONSE_CHUNK events
+   */
+  private async generateStreamingResponseWithSentenceTTS(
+    message: string,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
+    clientId: string
+  ): Promise<string> {
+    let fullResponse = '';
+    let sentenceBuffer = '';
+
+    // Sentence ending punctuation
+    const sentenceEnders = /[.!?]+[\s]*$/;
+
+    try {
+      const stream = this.claudeClient.generateStreamingResponse(message, conversationHistory);
+
+      for await (const chunk of stream) {
+        fullResponse += chunk;
+        sentenceBuffer += chunk;
+
+        // Check if we have a complete sentence
+        if (sentenceEnders.test(sentenceBuffer.trim())) {
+          const completeSentence = sentenceBuffer.trim();
+
+          logger.debug(`[Streaming TTS] Complete sentence: ${completeSentence.substring(0, 50)}...`);
+
+          // Publish RESPONSE_CHUNK event for immediate TTS generation
+          await this.eventBus.publish({
+            type: EventType.RESPONSE_CHUNK,
+            priority: EventPriority.URGENT, // High priority for low latency
+            source: 'agent-orchestrator',
+            payload: {
+              clientId,
+              message,
+              chunk: completeSentence,
+              isComplete: false,
+              timestamp: new Date()
+            }
+          });
+
+          // Clear buffer for next sentence
+          sentenceBuffer = '';
+        }
+      }
+
+      // Publish any remaining text as final chunk
+      if (sentenceBuffer.trim().length > 0) {
+        logger.debug(`[Streaming TTS] Final chunk: ${sentenceBuffer.trim()}`);
+
+        await this.eventBus.publish({
+          type: EventType.RESPONSE_CHUNK,
+          priority: EventPriority.URGENT,
+          source: 'agent-orchestrator',
+          payload: {
+            clientId,
+            message,
+            chunk: sentenceBuffer.trim(),
+            isComplete: true,
+            timestamp: new Date()
+          }
+        });
+      }
+
+      return fullResponse;
+
+    } catch (error) {
+      logger.error('Error in streaming response with sentence TTS:', error);
+      throw error;
+    }
   }
 
   /**
