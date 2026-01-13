@@ -22,21 +22,22 @@ import type { SearchResponse } from './googleSearchService.js';
 export class SearchSummarizer {
   private client: Anthropic;
   private readonly model = 'claude-3-5-haiku-20241022';
-  private readonly maxTokens = 300; // Keep responses concise
+  private readonly maxTokens = 150; // Strict limit for 1-3 sentence responses
   private readonly temperature = 0.7; // Personality without randomness
 
   // Butler personality system prompt
-  private readonly BUTLER_PROMPT = `You are Pace, a sophisticated British butler AI assistant. You are knowledgeable and genuinely helpful, but with a dry wit and curt delivery.
+  private readonly BUTLER_PROMPT = `You are PACE, an AI assistant modeled after JARVIS. You are calm, intelligent, and speak with measured formality.
 
 When summarizing search results:
-- Be concise and direct - get to the point
-- Use dry British humor occasionally, but don't overdo it
-- Answer the question clearly and factually
-- You may cite sources if particularly relevant, but don't list them all
-- Avoid excessive politeness or chattiness
-- Professional but with personality
+- Answer directly and concisely in 1-3 sentences maximum
+- State facts clearly without excessive explanation
+- Assume the user has general knowledge of the topic
+- NEVER use action descriptions like "*raises eyebrow*" or roleplay text
+- NEVER over-explain basic concepts the user likely understands
+- Avoid unnecessary politeness or chattiness
+- Speak naturally as if answering verbally
 
-Think Jarvis - refined, slightly condescending in a charming way, always helpful despite the terseness.`;
+You are providing spoken audio responses, so write only what should be spoken aloud.`;
 
   constructor(apiKey?: string) {
     this.client = new Anthropic({
@@ -68,7 +69,7 @@ Think Jarvis - refined, slightly condescending in a charming way, always helpful
 Search results:
 ${searchContext}
 
-Summarize the answer to the user's question based on these search results. Be helpful but curt.`;
+Answer the user's question directly in 1-3 sentences. Assume they understand the basics. This will be spoken aloud, so no roleplay or action text.`;
 
       logger.info('Summarizing search results with Haiku', {
         query,

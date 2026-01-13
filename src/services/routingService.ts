@@ -24,12 +24,21 @@ export class RoutingService {
 SUBSYSTEMS:
 {SUBSYSTEMS}
 
-ROUTING PRIORITY:
-1. If query is about weather/news/pure-math → Use PACE's built-in sensors (weather/news/wolfram)
-2. If query needs current/factual external knowledge → Use google_search
-3. If query is conversational/creative/opinion → Use claude
+ROUTING PRIORITY (CRITICAL - Follow this order):
+1. MATH/CALCULATIONS → ALWAYS use wolfram (numbers, equations, "what is X * Y", "calculate", unit conversions, scientific constants, population stats)
+2. WEATHER queries → Use weather
+3. NEWS queries → Use news
+4. FACTUAL KNOWLEDGE → Use google_search (how-to, explanations, definitions, facts, history, tutorials)
+5. CONVERSATION → Use claude (opinions, jokes, creative tasks, greetings, advice)
 
-CRITICAL: Respond with ONLY a JSON object in this exact format:
+CRITICAL RULES:
+- ANY query with numbers, math operations, or "calculate" MUST route to wolfram
+- "What is 2+2" → wolfram (NOT claude, even though it seems conversational)
+- "How tall is the Eiffel Tower" → google_search (factual lookup)
+- "Tell me about the Eiffel Tower" → google_search (factual knowledge)
+- "How are you?" → claude (conversational greeting)
+
+Respond with ONLY a JSON object in this exact format:
 {"subsystem":"<name>","confidence":<0-1>}
 
 Examples:
@@ -92,9 +101,9 @@ Examples:
     const examples: Record<string, string> = {
       weather: '"What\'s the weather?" → {"subsystem":"weather","confidence":0.95}',
       news: '"Tell me the news" → {"subsystem":"news","confidence":0.95}',
-      wolfram: '"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.95}',
+      wolfram: '"Calculate 5 * 8" → {"subsystem":"wolfram","confidence":0.98}\n"What is 2+2" → {"subsystem":"wolfram","confidence":0.98}\n"What\'s 15% of 200" → {"subsystem":"wolfram","confidence":0.98}\n"Convert 5 miles to kilometers" → {"subsystem":"wolfram","confidence":0.95}',
       google_search: '"How do you make coffee?" → {"subsystem":"google_search","confidence":0.9}\n"What is quantum computing?" → {"subsystem":"google_search","confidence":0.9}\n"Explain photosynthesis" → {"subsystem":"google_search","confidence":0.85}',
-      claude: '"How are you?" → {"subsystem":"claude","confidence":0.9}\n"Tell me a joke" → {"subsystem":"claude","confidence":0.95}\n"What\'s 2+2 and how\'s the weather?" → {"subsystem":"claude","confidence":0.7}'
+      claude: '"How are you?" → {"subsystem":"claude","confidence":0.9}\n"Tell me a joke" → {"subsystem":"claude","confidence":0.95}'
     };
 
     // Build subsystem list
