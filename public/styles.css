@@ -51,6 +51,7 @@ body {
 #blob1 {
     width: 350px;
     height: 250px;
+    --audio-scale: 1;
     background: linear-gradient(
         to right,
         rgba(13,17,25,1) 0%,
@@ -60,16 +61,26 @@ body {
     top: calc(50% + 30px);
     left: calc((100vw - 550px) / 2);
     border-radius: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(var(--audio-scale));
     transform-origin: center center;
     animation: rotate1 22s linear infinite;
     pointer-events: none;
     filter: blur(100px);
+    transition: background 0.3s ease;
+}
+
+#blob1.audio-active {
+    background: linear-gradient(
+        to right,
+        rgba(13,17,25,1) 0%,
+        rgba(32,201,151,0.8) 100%
+    );
 }
 
 #blob2 {
     width: 250px;
     height: 350px;
+    --audio-scale: 1;
     background: linear-gradient(
         to right,
         rgba(57,68,93,1) 0%,
@@ -79,28 +90,37 @@ body {
     position: fixed;
     top: calc(50% + 30px);
     left: calc((100vw - 550px) / 2);
-    transform: translate(-50%, -50%) rotate(90deg);
+    transform: translate(-50%, -50%) rotate(90deg) scale(var(--audio-scale));
     transform-origin: center center;
     animation: rotate2 11s linear infinite;
     pointer-events: none;
     filter: blur(100px);
+    transition: background 0.3s ease;
+}
+
+#blob2.audio-active {
+    background: linear-gradient(
+        to right,
+        rgba(32,201,151,0.8) 0%,
+        rgba(13,17,25,1) 100%
+    );
 }
 
 @keyframes rotate1 {
     from {
-        transform: translate(-50%, -50%) rotate(0deg);
+        transform: translate(-50%, -50%) rotate(0deg) scale(var(--audio-scale));
     }
     to {
-        transform: translate(-50%, -50%) rotate(360deg);
+        transform: translate(-50%, -50%) rotate(360deg) scale(var(--audio-scale));
     }
 }
 
 @keyframes rotate2 {
     from {
-        transform: translate(-50%, -50%) rotate(90deg);
+        transform: translate(-50%, -50%) rotate(90deg) scale(var(--audio-scale));
     }
     to {
-        transform: translate(-50%, -50%) rotate(450deg);
+        transform: translate(-50%, -50%) rotate(450deg) scale(var(--audio-scale));
     }
 }
 

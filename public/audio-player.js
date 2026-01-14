@@ -301,34 +301,36 @@ class AudioPlayer {
       return;
     }
 
+    // Add audio-active class for color change
+    blob1.classList.add('audio-active');
+    blob2.classList.add('audio-active');
+
     const draw = () => {
       this.animationId = requestAnimationFrame(draw);
 
       // Get frequency data
       this.analyser.getByteFrequencyData(dataArray);
 
-      // Calculate average frequency intensity
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
-      const intensity = average / 255; // Normalize to 0-1
-
       // Calculate low and high frequency components
       const lowFreq = dataArray.slice(0, bufferLength / 3).reduce((sum, v) => sum + v, 0) / (bufferLength / 3) / 255;
       const highFreq = dataArray.slice(bufferLength * 2 / 3).reduce((sum, v) => sum + v, 0) / (bufferLength / 3) / 255;
 
-      // Modulate blob1 with low frequencies (bass)
-      const blob1Scale = 1 + (lowFreq * 0.5); // Scale 1.0 - 1.5x
-      const blob1Blur = 100 + (lowFreq * 50); // Blur 100-150px
-      const blob1Opacity = 0.6 + (lowFreq * 0.4); // Opacity 0.6-1.0
+      // Modulate blob1 with low frequencies (bass) - MORE AGGRESSIVE
+      const blob1Scale = 1 + (lowFreq * 1.2); // Scale 1.0 - 2.2x
+      const blob1Blur = 100 + (lowFreq * 100); // Blur 100-200px
+      const blob1Opacity = 0.8 + (lowFreq * 0.2); // Opacity 0.8-1.0
 
-      blob1.style.transform = `translate(-50%, -50%) rotate(var(--rotation, 0deg)) scale(${blob1Scale})`;
+      // Apply transform (preserve CSS animation)
+      blob1.style.setProperty('--audio-scale', blob1Scale);
       blob1.style.filter = `blur(${blob1Blur}px) opacity(${blob1Opacity})`;
 
-      // Modulate blob2 with high frequencies (treble)
-      const blob2Scale = 1 + (highFreq * 0.5); // Scale 1.0 - 1.5x
-      const blob2Blur = 100 + (highFreq * 50); // Blur 100-150px
-      const blob2Opacity = 0.6 + (highFreq * 0.4); // Opacity 0.6-1.0
+      // Modulate blob2 with high frequencies (treble) - MORE AGGRESSIVE
+      const blob2Scale = 1 + (highFreq * 1.2); // Scale 1.0 - 2.2x
+      const blob2Blur = 100 + (highFreq * 100); // Blur 100-200px
+      const blob2Opacity = 0.8 + (highFreq * 0.2); // Opacity 0.8-1.0
 
-      blob2.style.transform = `translate(-50%, -50%) rotate(calc(90deg + var(--rotation, 0deg))) scale(${blob2Scale})`;
+      // Apply transform (preserve CSS animation)
+      blob2.style.setProperty('--audio-scale', blob2Scale);
       blob2.style.filter = `blur(${blob2Blur}px) opacity(${blob2Opacity})`;
     };
 
@@ -350,12 +352,14 @@ class AudioPlayer {
     const blob2 = document.getElementById('blob2');
 
     if (blob1) {
-      blob1.style.transform = '';
+      blob1.classList.remove('audio-active');
+      blob1.style.removeProperty('--audio-scale');
       blob1.style.filter = '';
     }
 
     if (blob2) {
-      blob2.style.transform = '';
+      blob2.classList.remove('audio-active');
+      blob2.style.removeProperty('--audio-scale');
       blob2.style.filter = '';
     }
 
