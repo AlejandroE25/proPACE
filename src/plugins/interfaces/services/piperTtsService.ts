@@ -202,12 +202,12 @@ export class PiperTTSService {
       let processAborted = false;
 
       // Spawn Piper process
-      // Output raw PCM audio (--output-raw) for faster processing
+      // Output WAV format (required for browser decodeAudioData)
       const piperProcess: ChildProcess = this.spawnFn(
         this.piperPath,
         [
           '--model', this.modelPath,
-          '--output-raw'  // Raw PCM output (faster than WAV)
+          '--output-file', '-'  // Output WAV to stdout
         ],
         {
           stdio: ['pipe', 'pipe', 'pipe']
