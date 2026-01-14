@@ -73,7 +73,7 @@ body {
     background: linear-gradient(
         to right,
         rgba(13,17,25,1) 0%,
-        rgba(32,201,151,0.8) 100%
+        rgba(150,245,250,0.8) 100%
     );
 }
 
@@ -101,7 +101,7 @@ body {
 #blob2.audio-active {
     background: linear-gradient(
         to right,
-        rgba(32,201,151,0.8) 0%,
+        rgba(150,245,250,0.8) 0%,
         rgba(13,17,25,1) 100%
     );
 }
