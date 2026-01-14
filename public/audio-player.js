@@ -1,6 +1,6 @@
 /**
  * Audio Player
- * Decodes MP3 chunks and plays audio using Web Audio API
+ * Decodes audio chunks (WAV from Piper TTS) and plays using Web Audio API
  */
 
 class AudioPlayer {
@@ -10,7 +10,7 @@ class AudioPlayer {
     this.audioQueue = [];
     this.nextStartTime = 0;
     this.currentSourceNodes = [];
-    this.pendingChunks = []; // Buffer for MP3 chunks until TTS_END
+    this.pendingChunks = []; // Buffer for audio chunks until TTS_END
 
     // Audio-reactive blob visualization
     this.analyser = null;
@@ -24,10 +24,9 @@ class AudioPlayer {
    */
   async initialize() {
     try {
-      // Create AudioContext
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: 48000
-      });
+      // Create AudioContext with default sample rate
+      // This will automatically match the audio file's sample rate (Piper outputs 22050 Hz)
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
       // Create analyser for audio-reactive blob visualization
       this.analyser = this.audioContext.createAnalyser();
@@ -59,16 +58,16 @@ class AudioPlayer {
   }
 
   /**
-   * Play an MP3 audio chunk
+   * Play an audio chunk (WAV from Piper TTS)
    */
-  async playChunk(mp3ArrayBuffer) {
+  async playChunk(audioArrayBuffer) {
     try {
       // Resume context if needed (browser autoplay policy)
       await this.resumeContext();
 
       // Check for special markers
-      if (this._isMarker(mp3ArrayBuffer)) {
-        const marker = this._getMarkerType(mp3ArrayBuffer);
+      if (this._isMarker(audioArrayBuffer)) {
+        const marker = this._getMarkerType(audioArrayBuffer);
         console.log('[AudioPlayer] Received marker:', marker);
 
         if (marker === 'TTS_END') {
@@ -83,10 +82,10 @@ class AudioPlayer {
         }
       }
 
-      // Buffer the chunk instead of decoding immediately
-      // MP3 chunks can't be decoded individually - need the full stream
-      this.pendingChunks.push(mp3ArrayBuffer);
-      console.log(`[AudioPlayer] Buffered chunk ${this.pendingChunks.length} (${mp3ArrayBuffer.byteLength} bytes)`);
+      // Buffer the chunk for sequential playback
+      // WAV chunks are complete audio files with headers - decode individually
+      this.pendingChunks.push(audioArrayBuffer);
+      console.log(`[AudioPlayer] Buffered chunk ${this.pendingChunks.length} (${audioArrayBuffer.byteLength} bytes)`);
 
     } catch (error) {
       console.error('[AudioPlayer] Error playing chunk:', error);
@@ -113,7 +112,8 @@ class AudioPlayer {
   }
 
   /**
-   * Decode and play all buffered MP3 chunks
+   * Decode and play all buffered audio chunks
+   * WAV chunks from Piper are complete audio files with headers - decode each individually
    */
   async _decodeAndPlayBufferedChunks() {
     if (this.pendingChunks.length === 0) {
@@ -135,34 +135,43 @@ class AudioPlayer {
         this.currentSourceNodes = [];
       }
 
-      // Concatenate all chunks into a single ArrayBuffer
-      const totalLength = this.pendingChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
-      const completeMP3 = new Uint8Array(totalLength);
-      let offset = 0;
-
-      for (const chunk of this.pendingChunks) {
-        completeMP3.set(new Uint8Array(chunk), offset);
-        offset += chunk.byteLength;
-      }
-
-      console.log(`[AudioPlayer] Decoding complete MP3 (${totalLength} bytes from ${this.pendingChunks.length} chunks)`);
-
-      // Clear buffer
-      this.pendingChunks = [];
-
-      // Decode the complete MP3
-      const audioBuffer = await this.audioContext.decodeAudioData(completeMP3.buffer);
-      console.log(`[AudioPlayer] Decoded ${audioBuffer.duration.toFixed(2)}s of audio`);
-
-      // Reset state and play from beginning
+      // Reset state for sequential playback
       this.isPlaying = false;
       this.nextStartTime = 0;
 
-      // Play the decoded audio
-      this._scheduleBuffer(audioBuffer);
+      console.log(`[AudioPlayer] Decoding ${this.pendingChunks.length} WAV chunks`);
+
+      // Copy chunks array and clear buffer before processing
+      const chunksToProcess = [...this.pendingChunks];
+      this.pendingChunks = [];
+
+      // Decode and schedule each WAV chunk individually
+      let totalDuration = 0;
+      let successfulChunks = 0;
+
+      for (let i = 0; i < chunksToProcess.length; i++) {
+        const chunk = chunksToProcess[i];
+
+        try {
+          // Decode this WAV chunk
+          const audioBuffer = await this.audioContext.decodeAudioData(chunk);
+          totalDuration += audioBuffer.duration;
+          successfulChunks++;
+
+          // Schedule it for playback
+          this._scheduleBuffer(audioBuffer);
+
+          console.log(`[AudioPlayer] Decoded chunk ${i + 1}/${chunksToProcess.length} (${audioBuffer.duration.toFixed(2)}s)`);
+        } catch (decodeError) {
+          console.error(`[AudioPlayer] Failed to decode chunk ${i + 1}:`, decodeError);
+          // Continue with remaining chunks
+        }
+      }
+
+      console.log(`[AudioPlayer] Successfully decoded ${successfulChunks}/${chunksToProcess.length} chunks (${totalDuration.toFixed(2)}s total)`);
 
     } catch (error) {
-      console.error('[AudioPlayer] Failed to decode buffered MP3:', error);
+      console.error('[AudioPlayer] Failed to process buffered chunks:', error);
       this.pendingChunks = []; // Clear buffer on error
       this.isPlaying = false;
       this.nextStartTime = 0;
@@ -170,14 +179,14 @@ class AudioPlayer {
   }
 
   /**
-   * Decode MP3 chunk to AudioBuffer
+   * Decode audio chunk to AudioBuffer
    */
-  async _decodeMP3Chunk(arrayBuffer) {
+  async _decodeAudioChunk(arrayBuffer) {
     try {
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       return audioBuffer;
     } catch (error) {
-      console.error('[AudioPlayer] MP3 decode error:', error);
+      console.error('[AudioPlayer] Audio decode error:', error);
       return null;
     }
   }
