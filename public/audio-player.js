@@ -154,14 +154,21 @@ class AudioPlayer {
 
         try {
           // Decode this WAV chunk
+          console.log(`[AudioPlayer] Decoding chunk ${i + 1}: ${chunk.byteLength} bytes`);
           const audioBuffer = await this.audioContext.decodeAudioData(chunk);
+
+          console.log(`[AudioPlayer] Decoded chunk ${i + 1}/${chunksToProcess.length}:`, {
+            duration: audioBuffer.duration.toFixed(2) + 's',
+            sampleRate: audioBuffer.sampleRate,
+            channels: audioBuffer.numberOfChannels,
+            contextRate: this.audioContext.sampleRate
+          });
+
           totalDuration += audioBuffer.duration;
           successfulChunks++;
 
           // Schedule it for playback
           this._scheduleBuffer(audioBuffer);
-
-          console.log(`[AudioPlayer] Decoded chunk ${i + 1}/${chunksToProcess.length} (${audioBuffer.duration.toFixed(2)}s)`);
         } catch (decodeError) {
           console.error(`[AudioPlayer] Failed to decode chunk ${i + 1}:`, decodeError);
           // Continue with remaining chunks
