@@ -458,19 +458,9 @@ export class AgentOrchestrator {
           { role: 'assistant', content: response, timestamp: new Date() }
         );
 
-        // Publish final RESPONSE_GENERATED event for completeness
-        await this.eventBus.publish({
-          type: EventType.RESPONSE_GENERATED,
-          priority: EventPriority.HIGH,
-          source: 'agent-orchestrator',
-          payload: {
-            clientId,
-            message,
-            response,
-            subsystem: 'claude',
-            timestamp: new Date()
-          }
-        });
+        // NOTE: We do NOT publish RESPONSE_GENERATED here because RESPONSE_CHUNK
+        // events have already triggered TTS for each sentence. Publishing the
+        // complete response would cause duplicate audio generation.
 
         return response;
       }

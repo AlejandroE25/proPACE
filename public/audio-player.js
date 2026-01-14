@@ -41,9 +41,9 @@ class AudioPlayer {
       this.waveformCanvas = document.getElementById('waveform-canvas');
       if (this.waveformCanvas) {
         this.waveformCtx = this.waveformCanvas.getContext('2d');
-        // Set canvas resolution (square for circular visualization)
-        this.waveformCanvas.width = 300;
-        this.waveformCanvas.height = 300;
+        // Set canvas resolution (350x350 to surround 250px button)
+        this.waveformCanvas.width = 350;
+        this.waveformCanvas.height = 350;
       }
 
       // Resume context if suspended (browser autoplay policy)
@@ -318,8 +318,8 @@ class AudioPlayer {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const barCount = 64; // Number of bars around the circle
-      const baseRadius = 80; // Inner radius
-      const maxBarLength = 40; // Maximum bar extension
+      const baseRadius = 125; // Button radius (250px diameter / 2)
+      const maxBarLength = 50; // Maximum bar extension outward
 
       // Draw circular waveform
       ctx.lineWidth = 3;
