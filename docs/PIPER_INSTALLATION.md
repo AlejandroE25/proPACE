@@ -4,6 +4,37 @@ Piper is a fast, local neural text-to-speech system that replaces OpenAI's TTS A
 
 ## Installation on Remote Server
 
+### Windows (PowerShell)
+
+```powershell
+# Create directories
+New-Item -ItemType Directory -Force -Path "C:\Program Files\Piper"
+New-Item -ItemType Directory -Force -Path "C:\Program Files\Piper\voices"
+
+# Download Piper for Windows
+$piperUrl = "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_windows_amd64.zip"
+Invoke-WebRequest -Uri $piperUrl -OutFile "$env:TEMP\piper.zip"
+
+# Extract
+Expand-Archive -Path "$env:TEMP\piper.zip" -DestinationPath "C:\Program Files\Piper" -Force
+
+# Add to PATH (requires admin)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\Piper", [EnvironmentVariableTarget]::Machine)
+
+# Download voice model
+$modelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
+$modelJsonUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+
+Invoke-WebRequest -Uri $modelUrl -OutFile "C:\Program Files\Piper\voices\en_US-lessac-medium.onnx"
+Invoke-WebRequest -Uri $modelJsonUrl -OutFile "C:\Program Files\Piper\voices\en_US-lessac-medium.onnx.json"
+
+# Verify installation (restart PowerShell after PATH update)
+piper --version
+
+# Test with a sentence
+"Hello, I am PACE, your personal AI assistant." | piper --model "C:\Program Files\Piper\voices\en_US-lessac-medium.onnx" --output-file test.wav
+```
+
 ### Ubuntu/Debian
 
 ```bash
@@ -106,7 +137,36 @@ Full voice catalog: https://rhasspy.github.io/piper-samples/
 
 ## Troubleshooting
 
-### "piper: command not found"
+### Windows: "piper.exe is not recognized"
+
+```powershell
+# Check if Piper is in PATH
+where.exe piper
+
+# If not, add to PATH manually or set in .env:
+# PIPER_PATH="C:\Program Files\Piper\piper.exe"
+
+# Or refresh PATH in current PowerShell session
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine")
+```
+
+### Windows: "Model file not found"
+
+```powershell
+# Verify model file exists
+Test-Path "C:\Program Files\Piper\voices\en_US-lessac-medium.onnx"
+
+# If false, re-download (see installation steps above)
+```
+
+### Windows: Permission errors
+
+```powershell
+# Run PowerShell as Administrator, then:
+icacls "C:\Program Files\Piper" /grant Users:(OI)(CI)F /T
+```
+
+### Linux/macOS: "piper: command not found"
 
 ```bash
 # Check if piper is in PATH
@@ -116,7 +176,7 @@ which piper
 export PATH=$PATH:/usr/local/bin
 ```
 
-### "Model file not found"
+### Linux/macOS: "Model file not found"
 
 ```bash
 # Verify model file exists
@@ -152,10 +212,42 @@ sudo chown -R $(whoami) /usr/local/share/piper/voices/
 - **Memory**: ~100MB for model + 50MB per concurrent generation
 - **Disk Space**: ~60-200MB per voice model
 
-## Next Steps
+## Next Steps for Windows Server
 
-After installation, update your PACE configuration:
+After installation on your Windows server:
 
-1. Set `USE_PIPER_TTS=true` in your environment
-2. Restart the PACE server
-3. Test voice interaction - audio should start much faster!
+```powershell
+# 1. Navigate to PACE directory
+cd C:\path\to\proPACE
+
+# 2. Pull latest changes
+git pull
+
+# 3. Rebuild
+npm run build
+
+# 4. Restart PACE
+# If using pm2:
+pm2 restart pace
+
+# If using node directly:
+# Stop current instance (Ctrl+C), then:
+npm start
+```
+
+The configuration will automatically detect Windows and use:
+- Piper path: `C:\Program Files\Piper\piper.exe`
+- Model path: `C:\Program Files\Piper\voices\en_US-lessac-medium.onnx`
+
+No `.env` changes needed unless you installed Piper in a custom location.
+
+## Next Steps for Linux/macOS
+
+```bash
+cd /path/to/proPACE
+git pull
+npm run build
+./update.sh  # Or your restart script
+```
+
+Audio should now start playing **much faster** - within 800ms-1.7s total latency instead of 2-4s!

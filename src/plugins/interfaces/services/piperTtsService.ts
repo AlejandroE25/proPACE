@@ -64,8 +64,16 @@ export class PiperTTSService {
 
   constructor(config: PiperTTSConfig) {
     this.eventBus = config.eventBus;
-    this.piperPath = config.piperPath || '/usr/local/bin/piper';
-    this.modelPath = config.modelPath || '/usr/local/share/piper/voices/en_US-lessac-medium.onnx';
+    // Default paths based on platform
+    const defaultPiperPath = process.platform === 'win32'
+      ? 'C:\\Program Files\\Piper\\piper.exe'
+      : '/usr/local/bin/piper';
+    const defaultModelPath = process.platform === 'win32'
+      ? 'C:\\Program Files\\Piper\\voices\\en_US-lessac-medium.onnx'
+      : '/usr/local/share/piper/voices/en_US-lessac-medium.onnx';
+
+    this.piperPath = config.piperPath || defaultPiperPath;
+    this.modelPath = config.modelPath || defaultModelPath;
     this.spawnFn = config.spawnFn || spawn;
 
     this.stats = {

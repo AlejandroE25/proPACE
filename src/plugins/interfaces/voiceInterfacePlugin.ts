@@ -105,10 +105,11 @@ export class VoiceInterfacePlugin extends BasePlugin {
     });
 
     // Initialize Piper TTS service (local, low-latency)
+    // Defaults are set in PiperTTSService constructor based on platform
     this.ttsService = new PiperTTSService({
       eventBus,
-      piperPath: settings.piperPath || '/usr/local/bin/piper',
-      modelPath: settings.piperModelPath || '/usr/local/share/piper/voices/en_US-lessac-medium.onnx'
+      piperPath: settings.piperPath,
+      modelPath: settings.piperModelPath
     });
 
     // TODO: Initialize STT service for speech-to-text functionality
