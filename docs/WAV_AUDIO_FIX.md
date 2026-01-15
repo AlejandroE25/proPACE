@@ -14,9 +14,9 @@ DOMException: The buffer passed to decodeAudioData contains an unknown content t
 
 The Piper TTS service was splitting complete WAV files into 16KB chunks for streaming. WAV files have a header at the beginning - only the first chunk had the header, making chunks 2+ undecodable.
 
-### Issue 2: Sample Rate Mismatch
+### Issue 2: Sample Rate Mismatch and Resampling Artifacts
 
-The AudioContext was hardcoded to 48000 Hz, but Piper outputs at 22050 Hz, causing audio to play at 2.18x speed (garbled/chipmunk effect).
+Initially, the AudioContext was hardcoded to 48000 Hz while Piper outputs at 22050 Hz natively. When we tried forcing Piper to output at 48000 Hz with `--sample-rate 48000`, the audio became unintelligible due to resampling artifacts from Piper's internal upsampling.
 
 ### Issue 3: Client-Side Concatenation
 
@@ -54,9 +54,33 @@ piperProcess.stdout?.on('data', (chunk: Buffer) => {
 await this.publishChunkEvent(responseId, audioBuffer, 0, totalBytes, clientId);
 ```
 
-### Solution 2: Remove Sample Rate Override (Client-Side)
+### Solution 2: Match Sample Rates at 22050 Hz (Both Sides)
 
-**File:** [`public/audio-player.js`](../public/audio-player.js)
+**Server-Side - File:** [`src/plugins/interfaces/services/piperTtsService.ts`](../src/plugins/interfaces/services/piperTtsService.ts)
+
+Remove `--sample-rate` flag to let Piper output at native 22050 Hz:
+
+**Before:**
+```typescript
+const piperProcess = spawn(piperPath, [
+  '--model', modelPath,
+  '--output-file', '-',
+  '--sample-rate', '48000'  // Causes resampling artifacts
+]);
+```
+
+**After:**
+```typescript
+const piperProcess = spawn(piperPath, [
+  '--model', modelPath,
+  '--output-file', '-'
+  // No --sample-rate flag - use Piper's native 22050 Hz
+]);
+```
+
+**Client-Side - File:** [`public/audio-player.js`](../public/audio-player.js)
+
+Force AudioContext to 22050 Hz to match Piper's native output:
 
 **Before:**
 ```javascript
@@ -67,9 +91,11 @@ this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
 
 **After:**
 ```javascript
-// Create AudioContext with default sample rate
-// This will automatically match the audio file's sample rate (Piper outputs 22050 Hz)
-this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+// Create AudioContext at 22050 Hz to match Piper's native output
+// This avoids resampling artifacts from Piper trying to upsample to 48kHz
+this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+  sampleRate: 22050
+});
 ```
 
 ### Solution 3: Decode WAV Chunks Individually (Client-Side)
@@ -110,13 +136,15 @@ for (let i = 0; i < chunksToProcess.length; i++) {
   - Removed 16KB chunking logic from `runPiper()` method (lines 231-241)
   - Now sends complete WAV files as single chunks (line 274-283)
   - Removed unused `CHUNK_SIZE` constant
+  - Removed `--sample-rate 48000` flag to use Piper's native 22050 Hz
 
 - [`tests/unit/plugins/interfaces/services/piperTtsService.test.ts`](../tests/unit/plugins/interfaces/services/piperTtsService.test.ts)
   - Updated test expectation: `--output-raw` → `--output-file -`
+  - Removed `--sample-rate` from test expectations
 
 ### Client-Side
 - [`public/audio-player.js`](../public/audio-player.js)
-  - Removed hardcoded 48000 Hz sample rate from AudioContext initialization (line 29)
+  - Changed AudioContext to force 22050 Hz sample rate (line 29-30)
   - Updated `_decodeAndPlayBufferedChunks()` to decode WAV chunks individually (lines 152-169)
   - Renamed method `_decodeMP3Chunk()` → `_decodeAudioChunk()`
   - Updated comments from "MP3" to generic "audio"
@@ -137,11 +165,19 @@ After this fix, Piper WAV audio should:
 - **After**: 1 complete WAV per sentence = single decode, less overhead
 - No network latency difference (same total bytes)
 
-## Architecture Insight
+## Architecture Insights
 
-**Key Takeaway**: Audio format determines chunking strategy:
+**Key Takeaway #1**: Audio format determines chunking strategy:
 - **MP3 streams**: Can be chunked and concatenated (single header at start)
 - **WAV files**: Cannot be chunked (each file has its own header)
 - **Solution**: Send WAV files as complete units, not fragments
 
 This is why Piper generates one WAV file per sentence - it's the correct atomic unit for WAV format.
+
+**Key Takeaway #2**: Avoid resampling when possible:
+- **Piper's native output**: 22050 Hz (optimized for the neural model)
+- **Browser default**: Usually 48000 Hz
+- **Problem**: Forcing Piper to resample to 48000 Hz creates artifacts
+- **Solution**: Configure AudioContext to match Piper's native rate (22050 Hz)
+
+Let the audio stay in its native format throughout the pipeline to avoid quality degradation.

@@ -101,7 +101,7 @@ describe('PiperTTSService', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         '/usr/local/bin/piper',
-        ['--model', '/usr/local/share/piper/voices/en_US-lessac-medium.onnx', '--output-file', '-', '--sample-rate', '48000'],
+        ['--model', '/usr/local/share/piper/voices/en_US-lessac-medium.onnx', '--output-file', '-'],
         expect.any(Object)
       );
 
