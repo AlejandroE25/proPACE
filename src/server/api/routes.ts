@@ -132,7 +132,9 @@ apiRouter.get('/speech/test', async (req: Request, res: Response) => {
         '--output-file', '-'
       ],
       {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        // On Windows, use shell to properly handle paths with spaces
+        shell: process.platform === 'win32'
       }
     );
 
@@ -181,9 +183,16 @@ apiRouter.get('/speech/test', async (req: Request, res: Response) => {
       res.send(audioBuffer);
     });
 
-    // Write text to stdin
-    piperProcess.stdin?.write(text);
-    piperProcess.stdin?.end();
+    // Write text to stdin with explicit UTF-8 encoding
+    if (piperProcess.stdin) {
+      piperProcess.stdin.write(text, 'utf8');
+      piperProcess.stdin.end();
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to write to Piper stdin'
+      });
+    }
 
   } catch (error: any) {
     console.error('[TTS Test] Error:', error);

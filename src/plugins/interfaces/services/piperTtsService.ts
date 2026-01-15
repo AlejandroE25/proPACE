@@ -211,7 +211,9 @@ export class PiperTTSService {
           // NOTE: --sample-rate flag is IGNORED by Piper, always outputs 22050 Hz
         ],
         {
-          stdio: ['pipe', 'pipe', 'pipe']
+          stdio: ['pipe', 'pipe', 'pipe'],
+          // On Windows, use shell to properly handle paths with spaces
+          shell: process.platform === 'win32'
         }
       );
 
@@ -286,9 +288,14 @@ export class PiperTTSService {
         resolve(totalBytes);
       });
 
-      // Write text to stdin and close
-      piperProcess.stdin?.write(text);
-      piperProcess.stdin?.end();
+      // Write text to stdin with explicit UTF-8 encoding
+      // Windows Piper may have encoding issues - ensure UTF-8
+      if (piperProcess.stdin) {
+        piperProcess.stdin.write(text, 'utf8');
+        piperProcess.stdin.end();
+      } else {
+        reject(new Error('Failed to write to Piper stdin - stream not available'));
+      }
     });
   }
 
