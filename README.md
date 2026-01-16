@@ -1,5 +1,13 @@
 # proPACE v2.0 - Autonomous AI Assistant
 
+> **⚠️ NOTICE: This project has evolved into [JACK - Just Another Conversational Kernel](https://github.com/AlejandroE25/JACK)**
+>
+> Development has moved to a new repository focusing on voice interface and real-time audio capabilities with Piper TTS. The core architecture and features from proPACE serve as the foundation for JACK's improved design.
+>
+> This repository remains available as a reference but is no longer actively maintained.
+
+---
+
 An advanced, self-aware AI assistant with autonomous decision-making, proactive intelligence, and continuous learning capabilities.
 
 <!-- Auto-update test: 2025-12-29 -->
